@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project version="4">
+  <component name="ProjectModuleManager">
+    <modules>
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/resistance.iml" filepath="$PROJECT_DIR$/.idea/modules/resistance.iml" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/resistance_main.iml" filepath="$PROJECT_DIR$/.idea/modules/resistance_main.iml" group="resistance" />
+      <module fileurl="file://$PROJECT_DIR$/.idea/modules/resistance_test.iml" filepath="$PROJECT_DIR$/.idea/modules/resistance_test.iml" group="resistance" />
+    </modules>
+  </component>
+</project>
