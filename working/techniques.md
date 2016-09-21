@@ -42,3 +42,7 @@ Natural selection, as per lecture notes. This would be used if we did something 
 ## [Neural networks](https://en.wikipedia.org/wiki/Artificial_neural_network)
 
 Machine learning - play lots of games, if it loses, improve itself.
+
+## [Constraint programming](https://en.wikipedia.org/wiki/Constraint_programming) 
+
+Relations between variables stated as constraints. For example, we could say 'A or B is a spy' 'B or C is a spy' 'there is 1 spy' and it would deduce that B is a spy.
