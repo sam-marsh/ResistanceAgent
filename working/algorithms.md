@@ -1,11 +1,8 @@
-# Techniques
+# Algorithms
 
 ## [Bayes theorem](https://en.wikipedia.org/wiki/Bayes%27_theorem)
 
 Describes the probability of an event, based on conditions that may be related to the event. P(A | B) = P(B | A) P(A) / P(B) i.e. the probability of A given B is the probability of B given A times the probability of A divided by the probability of B. Note in particular the Bayesian interpretation on the Wikipedia page - this translates it into belief. Will definitely need to use this to update our beliefs as the game goes on.
-
-Useful resources:
-
 
 ## [Markov models](https://en.wikipedia.org/wiki/Markov_model)
 
@@ -15,7 +12,7 @@ Useful resources:
  
  I think we might need a 'partially observable Markov decision process' (POMDP). This applies where the agent cannot directly observe the underlying state. But this still assumes the system evolves randomly...
  
- ## [Monte Carlo tree search](https://en.wikipedia.org/wiki/Monte_Carlo_tree_search)
+## [Monte Carlo tree search](https://en.wikipedia.org/wiki/Monte_Carlo_tree_search)
  
  A heuristic search algorithm for some kinds of decision processes (usually for game play). Used in Go and poker. Analyses most promising moves, expanding search tree using a random sample. 
 
