@@ -2,8 +2,7 @@ group 'ai'
 version '1.0-SNAPSHOT'
 
 apply plugin: 'java'
-
-languageLevel '1.6'
+apply plugin: 'idea'
 
 repositories {
     mavenCentral()

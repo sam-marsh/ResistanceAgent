@@ -4,9 +4,10 @@ import core.Agent;
 
 /**
  * Author: Sam Marsh
- * Date: 10/10/2016
+ * Date: 11/10/2016
  */
-public class ResistanceSMAgent implements Agent {
+public class RuleAgent implements Agent {
+
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
 
@@ -14,7 +15,7 @@ public class ResistanceSMAgent implements Agent {
 
     @Override
     public String do_Nominate(int number) {
-        return "ABC";
+        return null;
     }
 
     @Override
@@ -49,7 +50,7 @@ public class ResistanceSMAgent implements Agent {
 
     @Override
     public String do_Accuse() {
-        return "";
+        return null;
     }
 
     @Override

@@ -1,6 +1,6 @@
 package core;
 
-import agent.SMAgent;
+import agent.STMAgent;
 
 import java.util.*;
 import java.io.*;
@@ -278,7 +278,7 @@ public class Game{
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'A');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'C');
-    g.stopwatchOn();g.addPlayer(new SMAgent());g.stopwatchOff(1000,'D');
+    g.stopwatchOn();g.addPlayer(new STMAgent());g.stopwatchOff(1000,'D');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'E');
     g.setup();
     g.play();
