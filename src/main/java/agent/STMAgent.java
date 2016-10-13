@@ -41,8 +41,9 @@ public class STMAgent implements Agent {
                 return (int) Math.signum(o1.getValue() - o2.getValue());
             }
         });
-        for (Map.Entry<String, Double> entry : list)
-            System.out.println(entry);
+        for (Player p : state.players())
+            System.out.print(p + " ");
+        System.out.println();
     }
 
     @Override

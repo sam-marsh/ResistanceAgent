@@ -1,5 +1,7 @@
 package agent;
 
+import com.sun.org.apache.regexp.internal.RE;
+
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
@@ -34,10 +36,16 @@ public class GameState {
         proposedMission = null;
         mission = null;
 
-        me = new Player(this, _me.charAt(0), true);
+        if (team == Team.GOVERNMENT) System.exit(0);
+
+        double suspicionSpy = (double) numberOfSpies() / numberOfPlayers();
+        double suspicionResistance = (double) numberOfSpies() / (numberOfPlayers() - 1);
+
+        me = new Player(this, _me.charAt(0), team == Team.RESISTANCE ? 0 : suspicionSpy);
+
         players.put(me.id(), me);
         for (char id : _players.toCharArray()) {
-            Player player = new Player(this, id, false);
+            Player player = new Player(this, id, team == Team.RESISTANCE ? suspicionResistance : suspicionSpy);
             if (player.id() != me.id()) {
                 players.put(id, player);
             }

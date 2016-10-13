@@ -31,6 +31,8 @@ public class BayesSuspicionUpdater implements MissionListener {
 
         if (traitors == 0) return;
 
+        Mission mission = state.mission();
+
         List<Player> in = new ArrayList<Player>(state.mission().team());
 
         List<Player> out = new ArrayList<Player>(state.players());
@@ -38,28 +40,17 @@ public class BayesSuspicionUpdater implements MissionListener {
 
         Map<Player, Double> updated = new HashMap<Player, Double>(state.players().size());
 
-        double pbIn = calculate(in, traitors);
-        double pbOut = calculate(out, spies - traitors);
+        List<Player> pl = new LinkedList<Player>(state.players());
+        double pbIn = calculate(mission, pl, in, spies, traitors);
 
         for (Player p : state.players()) {
             double pa = p.bayesSuspicion();
             double pb;
             double pba;
-            if (in.contains(p)) {
-                pb = pbIn;
-                List<Player> removed = new ArrayList<Player>(in);
-                removed.remove(p);
-                pba = calculate(removed, traitors - 1);
-            } else {
-                pb = pbOut;
-                if (spies - traitors == 0) {
-                    pba = 0;
-                } else {
-                    List<Player> removed = new ArrayList<Player>(out);
-                    removed.remove(p);
-                    pba = calculate(removed, spies - traitors - 1);
-                }
-            }
+            pb = pbIn;
+            p.bayesSuspicion(1.0);
+            pba = calculate(mission, pl, in, spies, traitors);
+            p.bayesSuspicion(pa);
             updated.put(p, bayes(pa, pb, pba));
         }
 
@@ -68,29 +59,56 @@ public class BayesSuspicionUpdater implements MissionListener {
         }
     }
 
-    private double calculate(List<Player> team, int traitors) {
-        return calculate(team, traitors, 0, 0, new boolean[team.size()]);
-    }
-
-    private double calculate(List<Player> team, int traitors, int start, int curr, boolean[] used) {
-        if (curr == traitors) {
+    private double advancedCalculate(Mission mission, Collection<Player> players, List<Player> team, List<Player> spies, int sabotaged, int start, int curr, boolean spySabotaged[]) {
+        if (curr == sabotaged) {
+            int numSabotaged = 0;
+            for (int i = 0; i < spySabotaged.length; ++i) {
+                Player p = spies.get(i);
+                if (team.contains(p) && spySabotaged[i])
+                    numSabotaged++;
+            }
+            if (numSabotaged != sabotaged) return 0;
             double total = 1.0;
-            for (int i = 0; i < used.length; ++i) {
-                Player p = team.get(i);
-                double suspicion = p.bayesSuspicion();
-                if (used[i]) {
-                    total *= suspicion;
+            for (int i = 0; i < spySabotaged.length; ++i) {
+                Player p = spies.get(i);
+                if (team.contains(p)) {
+                    if (spySabotaged[i])
+                        total *= p.bayesSuspicion() * p.likelihoodToBetray(mission);
+                    else
+                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(mission));
                 } else {
-                    total *= (1 - suspicion);
+                    total *= p.bayesSuspicion();
+                }
+            }
+            for (Player p : players) {
+                if (!spies.contains(p)) {
+                    total *= (1 - p.bayesSuspicion());
                 }
             }
             return total;
         }
-        if (start == team.size()) return 0;
+        if (start == spies.size()) return 0;
+        spySabotaged[start] = true;
+        double tmp = advancedCalculate(mission, players, team, spies, sabotaged, start + 1, curr + 1, spySabotaged);
+        spySabotaged[start] = false;
+        return tmp + advancedCalculate(mission, players, team, spies, sabotaged, start + 1, curr, spySabotaged);
+    }
+
+    private double calculate(Mission mission, List<Player> players, List<Player> team, int nspies, int traitors) {
+        return calculate(mission, players, team, nspies, traitors, 0, 0, new boolean[players.size()]);
+    }
+
+    private double calculate(Mission mission, List<Player> players, List<Player> team, int nspies, int traitors, int start, int curr, boolean[] used) {
+        if (curr == nspies) {
+            List<Player> spies = new LinkedList<Player>();
+            for (int i = 0; i < players.size(); ++i) if (used[i]) spies.add(players.get(i));
+            return advancedCalculate(mission, players, team, spies, traitors, 0, 0, new boolean[spies.size()]);
+        }
+        if (start == players.size()) return 0;
         used[start] = true;
-        double tmp = calculate(team, traitors, start + 1, curr + 1, used);
+        double tmp = calculate(mission, players, team, nspies, traitors, start + 1, curr + 1, used);
         used[start] = false;
-        return tmp + calculate(team, traitors, start + 1, curr, used);
+        return tmp + calculate(mission, players, team, nspies, traitors, start + 1, curr, used);
     }
 
     private double bayes(double pa, double pb, double pba) {

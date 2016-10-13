@@ -19,14 +19,14 @@ public class Player {
     private final Variable possibleGoodActions;
     private double bayesSuspicion;
 
-    public Player(GameState data, char id, boolean me) {
+    public Player(GameState data, char id, double initialSuspicion) {
         this.id = id;
         this.friends = new HashMap<Player, Variable>();
         this.suspect = new Probability((double) data.numberOfSpies() / data.numberOfPlayers());
         this.supportSuspect = new Variable((double) data.numberOfSpies() / data.numberOfPlayers(), 1);
         this.suspiciousActions = new Variable(0, 0);
         this.possibleGoodActions = new Variable(0, 0);
-        this.bayesSuspicion = (double) data.numberOfSpies() / data.numberOfPlayers();
+        this.bayesSuspicion = initialSuspicion;
     }
 
     public Variable friendship(Player player) {
@@ -48,6 +48,10 @@ public class Player {
 
     public void bayesSuspicion(double _bayesSuspicion) {
         bayesSuspicion = _bayesSuspicion;
+    }
+
+    public double likelihoodToBetray(Mission mission) {
+        return 0.5;
     }
 
     public double spyness() {
