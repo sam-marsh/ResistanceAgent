@@ -87,7 +87,7 @@ public class STMAgent implements Agent {
         }
         if (state.team() == Team.RESISTANCE) {
             for (Player p : mission.team()) {
-                if (p.spyness() >= 0.95)
+                if (p.spyness() >= 0.9)
                     return false;
             }
             return true;

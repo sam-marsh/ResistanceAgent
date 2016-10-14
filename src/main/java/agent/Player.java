@@ -1,5 +1,8 @@
 package agent;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
@@ -47,11 +50,16 @@ public class Player {
     }
 
     public void bayesSuspicion(double _bayesSuspicion) {
-        bayesSuspicion = _bayesSuspicion;
+        //avoid rounding error taking it above 1 or below 0
+        bayesSuspicion = Math.min(Math.max(_bayesSuspicion, 0), 1);
     }
 
     public double likelihoodToBetray(Mission mission) {
         return 0.5;
+    }
+
+    public boolean definitelyASpy() {
+        return bayesSuspicion == 1;
     }
 
     public double spyness() {
@@ -65,7 +73,10 @@ public class Player {
     }
 
     public String toString() {
-        return String.format("%c[%.2f]", id, spyness());
+        return String.format(
+                "%c[%s]",
+                id, BigDecimal.valueOf(spyness()).round(new MathContext(4, RoundingMode.HALF_UP)).toEngineeringString()
+        );
     }
 
     @Override
