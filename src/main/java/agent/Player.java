@@ -3,10 +3,7 @@ package agent;
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 
 /**
  * Author: Sam Marsh
@@ -54,7 +51,14 @@ public class Player {
         bayesSuspicion = Math.min(Math.max(_bayesSuspicion, 0), 1);
     }
 
-    public double likelihoodToBetray(Mission mission) {
+    /**
+     * Gives the likelihood of this player to betray a mission, given that it is on the team and assuming it is a spy.
+     *
+     * @param mission the mission
+     * @param spiesOnMission the spies on the mission team (not including those left out of the team)
+     * @return the likelihood that the player will betray the mission
+     */
+    public double likelihoodToBetray(Mission mission, Collection<Player> spiesOnMission) {
         return 0.5;
     }
 

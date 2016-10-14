@@ -1,6 +1,8 @@
 package agent;
 
+import java.util.HashMap;
 import java.util.HashSet;
+import java.util.Map;
 import java.util.Set;
 
 /**
@@ -11,6 +13,7 @@ public class Mission {
 
     private final Player leader;
     private final Set<Player> team;
+    private final Map<Player, Double> originalSpyProbabilities;
 
     private int traitors;
 
@@ -21,6 +24,9 @@ public class Mission {
             team.add(state.lookup(id));
         }
         traitors = -1;
+        originalSpyProbabilities = new HashMap<Player, Double>(state.players().size());
+        for (Player p : state.players())
+            originalSpyProbabilities.put(p, p.bayesSuspicion());
     }
 
     public boolean done() {
@@ -29,6 +35,10 @@ public class Mission {
 
     public void done(int traitors) {
         this.traitors = traitors;
+    }
+
+    public Map<Player, Double> originalProbabilities() {
+        return originalSpyProbabilities;
     }
 
     public int traitors() {

@@ -3,6 +3,7 @@ package agent;
 import core.Agent;
 
 import java.util.*;
+import java.util.concurrent.*;
 
 /**
  * Author: Sam Marsh
@@ -16,6 +17,8 @@ public class STMAgent implements Agent {
     private Set<MissionListener> listeners;
     private String lastNominatedLeader = null;
     private String lastNominatedMission = null;
+    private ExecutorService executor;
+    private Future<?> task;
 
     public STMAgent() {
         initialised = false;
@@ -27,51 +30,59 @@ public class STMAgent implements Agent {
             state = new GameState(_name, _players, _spies);
             listeners = new HashSet<MissionListener>();
             listeners.add(new BayesSuspicionUpdater(state));
+            executor = Executors.newSingleThreadExecutor();
             initialised = true;
         }
         state.missionNumber(_mission);
         state.failures(_failures);
 
-        Map<String, Double> map = new HashMap<String, Double>(state.numberOfPlayers());
-        printGroupSuspicion(new ArrayList<Player>(state.players()), state.numberOfSpies(), 0, 0, new boolean[state.numberOfPlayers()], map);
-        List<Map.Entry<String, Double>> list = new LinkedList<Map.Entry<String, Double>>(map.entrySet());
-        Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
-            @Override
-            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                return (int) Math.signum(o1.getValue() - o2.getValue());
-            }
-        });
-        for (Player p : state.players())
-            System.out.print(p + " ");
-        System.out.println();
+        if (_mission == 6) {
+            executor.shutdownNow();
+        }
     }
 
     @Override
     public String do_Nominate(int number) {
-        Set<Player> nomination = new HashSet<Player>(number);
-        nomination.add(state.me()); //always pick myself
+        waitForCalculation();
+        //get probability of each group containing no spies, in descending order, and return the first group that
+        // also contains me
+        List<Map.Entry<String, Double>> groups = probabilityNoSpiesInGroup(number);
+        System.out.println(groups);
+        for (Map.Entry<String, Double> group : groups)
+            if (group.getKey().indexOf(state.me().id()) != -1)
+                return group.getKey();
 
-        List<Player> players = new LinkedList<Player>();
-        players.addAll(state.players());
-        Collections.shuffle(players);
-        Collections.sort(players, new Comparator<Player>() {
+        //fallback - pretty sure this will never be reached, but just in case, fall back on using the lowest spy
+        // probability players
+        StringBuilder sb = new StringBuilder();
+        sb.append(state.me().id());
+        int i = 1;
+
+        List<Player> list = new LinkedList<Player>(state.players());
+        Collections.shuffle(list);
+        Collections.sort(list, new Comparator<Player>() {
             @Override
             public int compare(Player o1, Player o2) {
-                return (int) Math.signum(o1.spyness() - o2.spyness());
+                return (int) Math.signum(o1.bayesSuspicion() - o2.bayesSuspicion());
             }
         });
-        while (nomination.size() < number) {
-            nomination.add(players.remove(0));
+        Iterator<Player> iterator = list.iterator();
+        while (i < number) {
+            if (iterator.hasNext()) {
+                Player p = iterator.next();
+                if (!state.me().equals(p)) {
+                    sb.append(p.id());
+                }
+            }
+            ++i;
         }
-
-        StringBuilder sb = new StringBuilder(number);
-        for (Player p : nomination) sb.append(p.id());
 
         return sb.toString();
     }
 
     @Override
     public void get_ProposedMission(String leader, String mission) {
+        waitForCalculation();
         lastNominatedLeader = leader;
         lastNominatedMission = mission;
         state.proposedMission(new Mission(state, leader, mission));
@@ -81,6 +92,8 @@ public class STMAgent implements Agent {
 
     @Override
     public boolean do_Vote() {
+        waitForCalculation();
+
         Mission mission = state.proposedMission();
         if (mission.leader().equals(state.me())) {
             return true;
@@ -102,6 +115,7 @@ public class STMAgent implements Agent {
 
     @Override
     public void get_Votes(String yays) {
+        waitForCalculation();
         Mission proposed = state.proposedMission();
         Set<Player> in = new HashSet<Player>(proposed.team());
         Set<Player> out = new HashSet<Player>(state.players());
@@ -134,6 +148,7 @@ public class STMAgent implements Agent {
 
     @Override
     public void get_Mission(String mission) {
+        waitForCalculation();
         if (mission.equals(lastNominatedMission)) {
             state.mission(new Mission(state, lastNominatedLeader, lastNominatedMission));
         } else {
@@ -145,21 +160,30 @@ public class STMAgent implements Agent {
 
     @Override
     public boolean do_Betray() {
+        waitForCalculation();
         return state.spyPoints() == 2 || state.resistancePoints() == 2 || state.me().spyness() < 0.75;
     }
 
     @Override
     public void get_Traitors(int traitors) {
+        waitForCalculation();
         state.mission().done(traitors);
-        for (MissionListener listener : listeners)
-            listener.missionOver();
+
+        executor.submit(new Runnable() {
+            @Override
+            public void run() {
+                for (MissionListener listener : listeners)
+                    listener.missionOver();
+            }
+        });
     }
 
     @Override
     public String do_Accuse() {
+        waitForCalculation();
         StringBuilder sb = new StringBuilder();
         for (Player p : state.players()) {
-            if (p.spyness() >= 0.95) {
+            if (p.definitelyASpy()) {
                 sb.append(p.id());
             }
         }
@@ -168,31 +192,54 @@ public class STMAgent implements Agent {
 
     @Override
     public void get_Accusation(String accuser, String accused) {
-
+        waitForCalculation();
     }
 
-    private void printGroupSuspicion(List<Player> players, int spies, int start, int curr, boolean[] used, Map<String, Double> map) {
-        if (curr == spies) {
+    private List<Map.Entry<String, Double>> probabilityNoSpiesInGroup(int select) {
+        Map<String, Double> map = new HashMap<String, Double>();
+        probabilityNoSpiesInGroup(new ArrayList<Player>(state.players()), select, 0, 0, new boolean[state.numberOfPlayers()], map);
+        List<Map.Entry<String, Double>> list = new ArrayList<Map.Entry<String, Double>>(map.entrySet());
+        Collections.shuffle(list);
+        Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
+            @Override
+            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
+                return (int) Math.signum(o2.getValue() - o1.getValue());
+            }
+        });
+        return list;
+    }
+
+    private void probabilityNoSpiesInGroup(List<Player> players, int select, int start, int curr, boolean[] used, Map<String, Double> map) {
+        if (curr == select) {
             double total = 1.0;
-            String s = "";
+            StringBuilder sb = new StringBuilder();
             for (int i = 0; i < used.length; ++i) {
                 Player p = players.get(i);
                 double suspicion = p.bayesSuspicion();
                 if (used[i]) {
-                    s += p.id();
-                    total *= suspicion;
-                } else {
-                    total *= (1 - suspicion);
+                    sb.append(p.id());
+                    total *= 1 - suspicion;
                 }
             }
-            map.put(s, total);
+            map.put(sb.toString(), total);
             return;
         }
         if (start == players.size()) return;
         used[start] = true;
-        printGroupSuspicion(players, spies, start + 1, curr + 1, used, map);
+        probabilityNoSpiesInGroup(players, select, start + 1, curr + 1, used, map);
         used[start] = false;
-        printGroupSuspicion(players, spies, start + 1, curr, used, map);
+        probabilityNoSpiesInGroup(players, select, start + 1, curr, used, map);
+    }
+
+    private void waitForCalculation() {
+        if (calculating()) {
+            try {
+                task.get();
+            } catch (Exception ignored) {}
+        }
+    }
+    private boolean calculating() {
+        return task != null && !task.isDone();
     }
 
 }

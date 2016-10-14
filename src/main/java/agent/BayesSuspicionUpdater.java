@@ -30,16 +30,9 @@ public class BayesSuspicionUpdater implements MissionListener {
 
     @Override
     public void missionOver() {
-        int traitors = state.mission().traitors();
-        int spies = state.numberOfSpies();
-
         //remove line below - still extremely useful to update probabilities when mission succeeds, since
         // if no sabotages occur it is more likely that there were no spies on the team
         //if (traitors == 0) return;
-
-        Mission mission = state.mission();
-
-        List<Player> team = new ArrayList<Player>(state.mission().team());
 
         //need a temporary map to store new probabilities, since need all spy probabilities to remain constant while
         // computing the new ones
@@ -112,14 +105,22 @@ public class BayesSuspicionUpdater implements MissionListener {
      * @return the probability of the mission resulting in the number of sabotages that occurred
      */
     private double computeProbabilityOfMissionSabotages(List<Player> players, int start, int curr, boolean[] spy) {
+        //base case - have reached the correct combination size
         if (curr == state.numberOfSpies()) {
+            //create list of spies and then iterate over all possibilities for which spies did/didn't sabotage
             List<Player> spies = new LinkedList<Player>();
             for (int i = 0; i < players.size(); ++i) if (spy[i]) spies.add(players.get(i));
-            return sumSpySabotagedCombinations(spies, 0, 0, new boolean[spies.size()]);
+            return sumSabotageCombinations(spies, 0, 0, new boolean[spies.size()]);
         }
+
+        //base case - ensure not over the array size
         if (start == players.size()) return 0;
+
+        //recurse - set the player in the first index to be a spy
         spy[start] = true;
         double tmp = computeProbabilityOfMissionSabotages(players, start + 1, curr + 1, spy);
+
+        //recurse - set the player in the first index to be a true resistance member
         spy[start] = false;
         return tmp + computeProbabilityOfMissionSabotages(players, start + 1, curr, spy);
     }
@@ -133,36 +134,38 @@ public class BayesSuspicionUpdater implements MissionListener {
      * @param spies the assumed list of spies (of size {@link GameState#numberOfSpies()})
      * @param start recursive parameter to help iterate over combinations - pass 0
      * @param curr recursive parameter to help iterate over combinations - pass 0
-     * @param spySabotaged recursive parameter to help iterate over combinations - pass a boolean array filled with the
+     * @param sabotaged recursive parameter to help iterate over combinations - pass a boolean array filled with the
      *                     value {@code false} of size {@link GameState#numberOfSpies()}
      * @return the total probability for a given set of spies to have sabotaged the number of times that the mission
      * was sabotaged
      */
-    private double sumSpySabotagedCombinations(
-            List<Player> spies, int start, int curr, boolean spySabotaged[]) {
+    private double sumSabotageCombinations(List<Player> spies, int start, int curr, boolean sabotaged[]) {
         //base case - have reached the correct combination size
         if (curr == state.mission().traitors()) {
 
             //ensure that the number of sabotages in this combination caused by spies IN THE TEAM corresponds to the
             // number of sabotages that actually occurred
             int numSabotaged = 0;
-            for (int i = 0; i < spySabotaged.length; ++i) {
+            for (int i = 0; i < sabotaged.length; ++i) {
                 Player p = spies.get(i);
-                if (state.mission().team().contains(p) && spySabotaged[i])
+                if (state.mission().team().contains(p) && sabotaged[i])
                     numSabotaged++;
             }
             if (numSabotaged != state.mission().traitors()) return 0;
 
+            List<Player> spiesOnMission = new LinkedList<Player>();
+            for (Player p : spies) if (state.mission().team().contains(p)) spiesOnMission.add(p);
+
             double total = 1.0;
-            for (int i = 0; i < spySabotaged.length; ++i) {
+            for (int i = 0; i < sabotaged.length; ++i) {
                 Player p = spies.get(i);
                 if (state.mission().team().contains(p)) {
-                    if (spySabotaged[i]) {
+                    if (sabotaged[i]) {
                         //spy on mission and spy sabotaged
-                        total *= p.bayesSuspicion() * p.likelihoodToBetray(state.mission());
+                        total *= p.bayesSuspicion() * p.likelihoodToBetray(state.mission(), spiesOnMission);
                     } else {
                         //spy on mission but didn't sabotage
-                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(state.mission()));
+                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(state.mission(), spiesOnMission));
                     }
                 } else {
                     //spy not on mission
@@ -181,15 +184,15 @@ public class BayesSuspicionUpdater implements MissionListener {
         }
 
         //base case - ensure not over the array size
-        if (start == spySabotaged.length) return 0;
+        if (start == sabotaged.length) return 0;
 
         //recurse - set the spy in the start index to have sabotaged
-        spySabotaged[start] = true;
-        double tmp = sumSpySabotagedCombinations(spies, start + 1, curr + 1, spySabotaged);
+        sabotaged[start] = true;
+        double tmp = sumSabotageCombinations(spies, start + 1, curr + 1, sabotaged);
 
         //recurse - set the spy in the start index not to have sabotaged
-        spySabotaged[start] = false;
-        return tmp + sumSpySabotagedCombinations(spies, start + 1, curr, spySabotaged);
+        sabotaged[start] = false;
+        return tmp + sumSabotageCombinations(spies, start + 1, curr, sabotaged);
     }
 
 }
