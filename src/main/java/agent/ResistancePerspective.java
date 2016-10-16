@@ -66,7 +66,8 @@ public class ResistancePerspective {
         List<Player> players = new LinkedList<Player>(players());
 
         //P(B) - probability of cards being dealt - is constant for all players so can compute once
-        double pb = computeProbabilityOfMissionSabotages(players);
+        //edit - don't need to spend resources on calculating this, can just normalise each probability at the end
+        //double pb = computeProbabilityOfMissionSabotages(players);
 
         for (Player p : players()) {
             //P(A) - original probability of being a spy
@@ -79,12 +80,18 @@ public class ResistancePerspective {
             p.bayesSuspicion(pa);
 
             //add new probability to map
-            updated.put(p, bayes(pa, pb, pba));
+            updated.put(p, bayes(pa, 1.0, pba));
+        }
+
+        double total = 0.0;
+        for (Map.Entry<Player, Double> entry : updated.entrySet()) {
+            total += entry.getValue();
         }
 
         //computation is done - update probabilities from map
         for (Map.Entry<Player, Double> entry : updated.entrySet()) {
-            entry.getKey().bayesSuspicion(entry.getValue());
+            double newValue = entry.getValue() * state.numberOfSpies() / total;
+            entry.getKey().bayesSuspicion(newValue);
         }
     }
 

@@ -18,8 +18,9 @@ import java.util.concurrent.Future;
 public class BayesSpyAgent implements Agent {
 
     //if a mission is sabotaged by us, the suspicion of the spies will increase - this constant holds the maximum
-    // average suspicion for any spy that may be caused by us sabotaging, before we decide to/not to sabotage.
-    private static final double MAX_ACCEPTABLE_SUSPICION_INCREASE = 0.5;
+    // suspicion increase ratio for any spy that may be caused by us sabotaging, before we decide to/not to sabotage.
+    // At the moment, we will not sabotage if it causes the suspicion of any spy to double (or more)
+    private static final double MAX_ACCEPTABLE_SUSPICION_INCREASE = 2.0;
 
     //whether the game has started and everything has been set up
     private boolean initialised;
@@ -198,11 +199,14 @@ public class BayesSpyAgent implements Agent {
                 if (spies.indexOf(p.id()) != -1) {
                     double newSuspicion = p.bayesSuspicion();
                     double oldSuspicion = tmp.get(p);
+
+                    //don't sabotage if there is a risk that it will reveal a spy
                     if (newSuspicion == 1 && oldSuspicion < 1) {
                         continuing = false;
                         break;
                     }
-                    suspicion.put(p.id(), suspicion.get(p.id()) + p.bayesSuspicion() - tmp.get(p));
+
+                    suspicion.put(p.id(), suspicion.get(p.id()) + newSuspicion / oldSuspicion);
                 }
             }
 
@@ -225,8 +229,7 @@ public class BayesSpyAgent implements Agent {
             suspicion.put(c, suspicion.get(c) / perspectives.size());
         }
 
-        System.out.println(suspicion);
-
+        //check that no spy's suspicion is increasing too much
         for (Map.Entry<Character, Double> entry : suspicion.entrySet()) {
             if (entry.getValue() > MAX_ACCEPTABLE_SUSPICION_INCREASE) {
                 return false;
@@ -257,10 +260,12 @@ public class BayesSpyAgent implements Agent {
     }
 
     @Override
-    public void get_Accusation(String accuser, String accused) {
+    public void get_Accusation(String accuser, String accused) {}
 
-    }
-
+    /**
+     * Utility method to wait for all executing calculations (generally of suspicion values using Bayes' rule) to
+     * finish.
+     */
     private void waitForCalculation() {
         Iterator<Future<?>> iterator = futures.iterator();
         while (iterator.hasNext()) {
@@ -272,10 +277,24 @@ public class BayesSpyAgent implements Agent {
         }
     }
 
+    /**
+     * The expert rules for sabotage. Currently sabotages if
+     *  - it will win the game
+     *  - we are at risk of losing the game
+     *  - it is the last round (redundant)
+     *
+     * @return true if we should sabotage
+     */
     private boolean shouldSabotageByExpertRules() {
         return state.spyPoints() == 2 || state.resistancePoints() == 2 || state.round() == 5;
     }
 
+    /**
+     * Utility method to calculate the number of spies on a mission.
+     *
+     * @param mission the mission to check
+     * @return the number of spies on the mission
+     */
     private int numberOfSpiesOnMission(Mission mission) {
         int n = 0;
         for (char c : mission.team())
@@ -284,17 +303,34 @@ public class BayesSpyAgent implements Agent {
         return n;
     }
 
+    /**
+     * Calculates the 'incorrectness' of the average resistance member's guess as to who is the spy, given our opponent
+     * model of the resistance. We try to maximise this incorrectness to win the game as a spy. This is used when
+     * nominating a team to go on a mission. Every mission contains us - not particularly because it is an advantage,
+     * but since it may be considered suspicious not to choose us on our team.
+     *
+     * @param select the number of players to be in the mission
+     * @param start recursive parameter - pass 0
+     * @param curr recursive parameter - pass 0
+     * @param used recursive parameter - pass an array of false values of size {@link GameState#numberOfPlayers()}
+     * @param map the map to place the computed values in. The keys are the possible teams to choose, along with their
+     *            incorrectness values.
+     */
     private void computeIncorrectness(int select, int start, int curr, boolean[] used, Map<String, Double> map) {
+        //recursive base case
         if (curr == select) {
+            //create the team string
             StringBuilder sb = new StringBuilder();
             for (int i = 0; i < used.length; ++i) {
                 if (used[i]) {
                     sb.append(state.players()[i]);
                 }
             }
+            //ignore if we're not in the team
             if (sb.toString().indexOf(me) == -1)
                 return;
 
+            //create a fake mission
             Mission fake = new Mission(state, String.valueOf(me), sb.toString());
             state.mission(fake);
             int sabotaged = numberOfSpiesOnMission(fake);
@@ -302,6 +338,7 @@ public class BayesSpyAgent implements Agent {
 
             double total = 0;
 
+            //update suspicion values of resistance members
             for (ResistancePerspective perspective : perspectives) {
                 Map<Player, Double> tmp = new HashMap<Player, Double>(perspective.players().size());
                 for (Player player : perspective.players())
@@ -309,6 +346,7 @@ public class BayesSpyAgent implements Agent {
 
                 perspective.updateSuspicion();
 
+                //sum up how wrong each player's suspicion of the spies is
                 double wrongness = 0;
                 for (Player player : perspective.players()) {
                     if (spies.indexOf(player.id()) != -1) {
@@ -318,8 +356,10 @@ public class BayesSpyAgent implements Agent {
                     }
                 }
 
+                //add to the total
                 total += wrongness;
 
+                //reset suspicion
                 for (Map.Entry<Player, Double> entry : tmp.entrySet())
                     entry.getKey().bayesSuspicion(entry.getValue());
             }
@@ -327,13 +367,22 @@ public class BayesSpyAgent implements Agent {
             map.put(sb.toString(), total);
             return;
         }
+        //another base case - finished
         if (start == state.numberOfPlayers()) return;
+
+        //use the player at the start index in the team and recurse
         used[start] = true;
         computeIncorrectness(select, start + 1, curr + 1, used, map);
+
+        //don't use the player at the start index in the team and recurse
         used[start] = false;
         computeIncorrectness(select, start + 1, curr, used, map);
     }
 
+    /**
+     * Method for debugging/testing.
+     * @return the game state
+     */
     public GameState state() {
         return state;
     }
