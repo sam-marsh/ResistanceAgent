@@ -1,6 +1,7 @@
 package core;
 
-import agent.STMAgent;
+import agent.bayes.BayesAgent;
+import agent.mcts.MCTSAgent;
 
 import java.util.*;
 import java.io.*;
@@ -278,13 +279,8 @@ public class Game{
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'A');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'C');
-    g.stopwatchOn();g.addPlayer(new STMAgent());g.stopwatchOff(1000,'D');
+    g.stopwatchOn();g.addPlayer(new BayesAgent());g.stopwatchOff(1000,'D');
     g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'E');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'F');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'G');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'H');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'I');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'J');
     g.setup();
     g.play();
   }

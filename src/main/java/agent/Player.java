@@ -1,5 +1,7 @@
 package agent;
 
+import core.Game;
+
 import java.math.BigDecimal;
 import java.math.MathContext;
 import java.math.RoundingMode;
@@ -78,8 +80,8 @@ public class Player {
 
     public String toString() {
         return String.format(
-                "%c[%s]",
-                id, BigDecimal.valueOf(spyness()).round(new MathContext(4, RoundingMode.HALF_UP)).toEngineeringString()
+                "%c[%s%%]",
+                id, BigDecimal.valueOf(100 * spyness()).round(new MathContext(4, RoundingMode.HALF_UP)).toEngineeringString()
         );
     }
 

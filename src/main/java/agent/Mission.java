@@ -1,8 +1,6 @@
 package agent;
 
-import java.util.HashMap;
 import java.util.HashSet;
-import java.util.Map;
 import java.util.Set;
 
 /**
@@ -11,56 +9,47 @@ import java.util.Set;
  */
 public class Mission {
 
-    private final Player leader;
-    private final Set<Player> team;
-    private final Map<Player, Double> originalSpyProbabilities;
+    private final char leader;
+    private final Set<Character> team;
 
     private int traitors;
 
     public Mission(GameState state, String _leader, String _team) {
-        leader = state.lookup(_leader.charAt(0));
-        team = new HashSet<Player>();
+        leader = _leader.charAt(0);
+        team = new HashSet<Character>();
         for (char id : _team.toCharArray()) {
-            team.add(state.lookup(id));
+            team.add(id);
         }
         traitors = -1;
-        originalSpyProbabilities = new HashMap<Player, Double>(state.players().size());
-        for (Player p : state.players())
-            originalSpyProbabilities.put(p, p.bayesSuspicion());
     }
 
     public boolean done() {
         return traitors != -1;
     }
 
-    public void done(int traitors) {
-        this.traitors = traitors;
+    public void undo() {
+        this.traitors = -1;
     }
 
-    public Map<Player, Double> originalProbabilities() {
-        return originalSpyProbabilities;
+    public void done(int traitors) {
+        this.traitors = traitors;
     }
 
     public int traitors() {
         return traitors;
     }
 
-    public Player leader() {
+    public char leader() {
         return leader;
     }
 
-    public Set<Player> team() {
+    public Set<Character> team() {
         return team;
     }
 
     @Override
     public String toString() {
-        return "Mission{" +
-                "leader=" + leader +
-                ", team=" + team +
-                ", done=" + done() +
-                ", traitors=" + traitors +
-                '}';
+        return String.format("Mission{leader=%s, team=%s, done=%s, traitors=%d}", leader, team, done(), traitors);
     }
 
 }

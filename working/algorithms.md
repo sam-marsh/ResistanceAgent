@@ -6,11 +6,11 @@ Describes the probability of an event, based on conditions that may be related t
 
 ## [Markov models](https://en.wikipedia.org/wiki/Markov_model)
 
- Models randomly changing ('stochastic') systems where it is assumed that future states depend only on the current state, not on the events that occured before it (the Markov property). Is this true for The Resistance?
+ Models randomly changing ('stochastic') systems where it is assumed that future states depend only on the current perspective, not on the events that occured before it (the Markov property). Is this true for The Resistance?
  
  There are different types of Markov model depending on the system: fully observable/partially observable and autonomous/controlled. I think our system is partially observable (since don't have full information) and controlled (we have at least some control over the system?).
  
- I think we might need a 'partially observable Markov decision process' (POMDP). This applies where the agent cannot directly observe the underlying state. But this still assumes the system evolves randomly...
+ I think we might need a 'partially observable Markov decision process' (POMDP). This applies where the agent cannot directly observe the underlying perspective. But this still assumes the system evolves randomly...
  
 ## [Monte Carlo tree search](https://en.wikipedia.org/wiki/Monte_Carlo_tree_search)
  

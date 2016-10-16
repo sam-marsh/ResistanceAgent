@@ -1,50 +1,74 @@
 package agent;
 
+import com.sun.org.apache.regexp.internal.RE;
+
 import java.util.*;
 
 /**
- * This updates spy probabilities after each round via Bayes rule.
+ * Author: Sam Marsh
+ * Date: 11/10/2016
  */
-public class BayesSuspicionUpdater implements MissionListener {
+public class ResistancePerspective {
 
-    //the game context for accessing/updating original player spy probabilities
     private final GameState state;
+    private final Player me;
+    private final Map<Character, Player> players;
+    private final Team team;
 
-    /**
-     * Creates a new listener for updating spy probabilities after each mission.
-     * @param state the game context
-     */
-    public BayesSuspicionUpdater(GameState state) {
-        this.state = state;
+    public ResistancePerspective(GameState _state, String _me, String _players, String _spies) {
+        state = _state;
+        players = new HashMap<Character, Player>();
+        team = _spies.contains("?") ? Team.RESISTANCE : Team.GOVERNMENT;
+
+        double initialSuspicion = (double) _state.numberOfSpies() / (_state.numberOfPlayers() - 1);
+
+        me = new Player(state, _me.charAt(0), 0);
+
+        players.put(me.id(), me);
+        for (char id : _players.toCharArray()) {
+            if (id != me.id()) {
+                Player player = new Player(state, id, initialSuspicion);
+                players.put(id, player);
+            }
+        }
     }
 
-    @Override
-    public void missionProposed() {
-        //ignore
+    public GameState state() {
+        return state;
     }
 
-    @Override
-    public void missionChosen() {
-        //ignore
+    public Player me() {
+        return me;
     }
 
-    @Override
-    public void missionOver() {
+    public Collection<Player> players() {
+        return players.values();
+    }
+
+    public Team team() {
+        return team;
+    }
+
+    public Player lookup(char id) {
+        return players.get(id);
+    }
+
+    public void updateSuspicion() {
         //remove line below - still extremely useful to update probabilities when mission succeeds, since
         // if no sabotages occur it is more likely that there were no spies on the team
         //if (traitors == 0) return;
 
         //need a temporary map to store new probabilities, since need all spy probabilities to remain constant while
         // computing the new ones
-        Map<Player, Double> updated = new HashMap<Player, Double>(state.players().size());
+        Map<Player, Double> updated = new HashMap<Player, Double>(players().size());
 
         //need to create new list to hold the collection of players since need to access by index - bit annoying
-        List<Player> players = new LinkedList<Player>(state.players());
+        List<Player> players = new LinkedList<Player>(players());
 
         //P(B) - probability of cards being dealt - is constant for all players so can compute once
         double pb = computeProbabilityOfMissionSabotages(players);
 
-        for (Player p : state.players()) {
+        for (Player p : players()) {
             //P(A) - original probability of being a spy
             double pa = p.bayesSuspicion();
 
@@ -79,6 +103,7 @@ public class BayesSuspicionUpdater implements MissionListener {
         return pa * pba / pb;
     }
 
+
     /**
      * This method is for computing P(B) and P(B|A): it calculates the probability of the number of sabotages that
      * happened on this mission. It does this by iterating over all combinations of spies on the team, and within that
@@ -106,7 +131,7 @@ public class BayesSuspicionUpdater implements MissionListener {
      */
     private double computeProbabilityOfMissionSabotages(List<Player> players, int start, int curr, boolean[] spy) {
         //base case - have reached the correct combination size
-        if (curr == state.numberOfSpies()) {
+        if (curr == state().numberOfSpies()) {
             //create list of spies and then iterate over all possibilities for which spies did/didn't sabotage
             List<Player> spies = new LinkedList<Player>();
             for (int i = 0; i < players.size(); ++i) if (spy[i]) spies.add(players.get(i));
@@ -148,18 +173,18 @@ public class BayesSuspicionUpdater implements MissionListener {
             int numSabotaged = 0;
             for (int i = 0; i < sabotaged.length; ++i) {
                 Player p = spies.get(i);
-                if (state.mission().team().contains(p) && sabotaged[i])
+                if (state.mission().team().contains(p.id()) && sabotaged[i])
                     numSabotaged++;
             }
             if (numSabotaged != state.mission().traitors()) return 0;
 
             List<Player> spiesOnMission = new LinkedList<Player>();
-            for (Player p : spies) if (state.mission().team().contains(p)) spiesOnMission.add(p);
+            for (Player p : spies) if (state.mission().team().contains(p.id())) spiesOnMission.add(p);
 
             double total = 1.0;
             for (int i = 0; i < sabotaged.length; ++i) {
                 Player p = spies.get(i);
-                if (state.mission().team().contains(p)) {
+                if (state.mission().team().contains(p.id())) {
                     if (sabotaged[i]) {
                         //spy on mission and spy sabotaged
                         total *= p.bayesSuspicion() * p.likelihoodToBetray(state.mission(), spiesOnMission);
@@ -173,7 +198,7 @@ public class BayesSuspicionUpdater implements MissionListener {
                 }
             }
 
-            for (Player p : state.players()) {
+            for (Player p : players()) {
                 if (!spies.contains(p)) {
                     //not a spy
                     total *= (1 - p.bayesSuspicion());
@@ -193,6 +218,11 @@ public class BayesSuspicionUpdater implements MissionListener {
         //recurse - set the spy in the start index not to have sabotaged
         sabotaged[start] = false;
         return tmp + sumSabotageCombinations(spies, start + 1, curr, sabotaged);
+    }
+
+    @Override
+    public String toString() {
+        return String.format("ResistancePerspective{me=%s, players=%s, team=%s}", me, players, team);
     }
 
 }
