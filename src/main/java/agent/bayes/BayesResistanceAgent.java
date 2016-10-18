@@ -99,6 +99,13 @@ public class BayesResistanceAgent implements Agent {
         if (!mission.team().contains(perspective.me().id()))
             return false;
 
+        //below is unnecessary since the team will get through either way
+        /*
+        if (state.proposalTries() == 4) {
+            return true;
+        }
+        */
+
         for (Character c : mission.team()) {
             if (perspective.lookup(c).spyness() >= 0.9)
                 return false;

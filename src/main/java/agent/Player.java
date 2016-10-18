@@ -56,12 +56,15 @@ public class Player {
     /**
      * Gives the likelihood of this player to betray a mission, given that it is on the team and assuming it is a spy.
      *
-     * @param mission the mission
+     * @param state the game context
      * @param spiesOnMission the spies on the mission team (not including those left out of the team)
      * @return the likelihood that the player will betray the mission
      */
-    public double likelihoodToBetray(Mission mission, Collection<Player> spiesOnMission) {
-        return 0.5;
+    public double likelihoodToBetray(GameState state, Collection<Player> spiesOnMission) {
+        if (spiesOnMission.size() == 1) {
+            return 0.95;
+        }
+        return 0.9 / spiesOnMission.size();
     }
 
     public boolean definitelyASpy() {

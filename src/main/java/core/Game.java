@@ -298,8 +298,8 @@ public class Game{
           map.put(c, data);
       }
       int i = 0;
-      while (i < 100) {
-          if (i % 5 == 0) System.out.println(100 * (double) i / 100 + "%");
+      while (i < 200) {
+          if (i % 5 == 0) System.out.println(100 * (double) i / 200 + "%");
           Game g = new Game("out.txt");
           g.addPlayer(new LogicalAgent());
           g.addPlayer(new LogicalAgent());
@@ -307,9 +307,11 @@ public class Game{
           g.addPlayer(new BayesAgent());
           g.addPlayer(new BayesAgent());
           g.addPlayer(new BayesAgent());
+          g.addPlayer(new RandomAgent());
           g.setup();
           g.play();
           for (Character c : g.winners) {
+              if (c == 'G') continue;
               if (g.spiesWon) {
                   map.get(c).swins += 1;
                   map.get(c).splays += 1;

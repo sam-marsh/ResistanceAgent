@@ -194,10 +194,10 @@ public class ResistancePerspective {
                 if (state.mission().team().contains(p.id())) {
                     if (sabotaged[i]) {
                         //spy on mission and spy sabotaged
-                        total *= p.bayesSuspicion() * p.likelihoodToBetray(state.mission(), spiesOnMission);
+                        total *= p.bayesSuspicion() * p.likelihoodToBetray(state, spiesOnMission);
                     } else {
                         //spy on mission but didn't sabotage
-                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(state.mission(), spiesOnMission));
+                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(state, spiesOnMission));
                     }
                 } else {
                     //spy not on mission

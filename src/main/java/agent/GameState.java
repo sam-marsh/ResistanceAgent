@@ -12,6 +12,7 @@ public class GameState {
     private final int numberOfSpies;
     private final char[] players;
 
+    private int missionProposalTries;
     private int round;
     private int failures;
     private Mission proposedMission;
@@ -25,6 +26,7 @@ public class GameState {
         this.failures = 0;
         this.proposedMission = null;
         this.mission = null;
+        this.missionProposalTries = 0;
     }
 
     public char[] players() {
@@ -45,6 +47,7 @@ public class GameState {
 
     public void missionNumber(int _missionNumber) {
         round = _missionNumber;
+        missionProposalTries = 0;
     }
 
     public void failures(int _failures) {
@@ -61,6 +64,11 @@ public class GameState {
 
     public void proposedMission(Mission _mission) {
         proposedMission = _mission;
+        ++missionProposalTries;
+    }
+
+    public int proposalTries() {
+        return missionProposalTries;
     }
 
     public Mission proposedMission() {
