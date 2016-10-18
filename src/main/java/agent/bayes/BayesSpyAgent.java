@@ -102,14 +102,14 @@ public class BayesSpyAgent implements Agent {
         //find incorrectness for each resistance member's prediction based on each team containing me, sort by maximum
         // incorrectness, and return the one that makes the resistance members the most wrong in their inference
         Map<String, Double> map = new HashMap<String, Double>();
-        computeIncorrectness(number, 0, 0, new boolean[state.numberOfPlayers()], map);
+        computeUncertainty(number, 0, 0, new boolean[state.numberOfPlayers()], map);
         List<Map.Entry<String, Double>> list = new LinkedList<Map.Entry<String, Double>>(map.entrySet());
-
+        Collections.shuffle(list);
         //sort descending
         Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
             @Override
             public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                return (int) Math.signum(o2.getValue() - o1.getValue());
+                return (int) Math.signum(o1.getValue() - o2.getValue());
             }
         });
 
@@ -174,7 +174,7 @@ public class BayesSpyAgent implements Agent {
 
         //now - simulate that every spy on the team will sabotage (worst case in terms of suspicion)
         int n = numberOfSpiesOnMission(state.mission());
-        state.mission().done(n);
+        state.mission().done(1);
 
         //after the below, this will hold the average suspicion for each spy before
         Map<Character, Double> suspicion = new HashMap<Character, Double>(spies.length());
@@ -316,7 +316,7 @@ public class BayesSpyAgent implements Agent {
      * @param map the map to place the computed values in. The keys are the possible teams to choose, along with their
      *            incorrectness values.
      */
-    private void computeIncorrectness(int select, int start, int curr, boolean[] used, Map<String, Double> map) {
+    private void computeUncertainty(int select, int start, int curr, boolean[] used, Map<String, Double> map) {
         //recursive base case
         if (curr == select) {
             //create the team string
@@ -337,6 +337,7 @@ public class BayesSpyAgent implements Agent {
             state.mission().done(sabotaged);
 
             double total = 0;
+            double unknown = state.numberOfSpies() / (state.numberOfPlayers() - 1);
 
             //update suspicion values of resistance members
             for (ResistancePerspective perspective : perspectives) {
@@ -349,10 +350,8 @@ public class BayesSpyAgent implements Agent {
                 //sum up how wrong each player's suspicion of the spies is
                 double wrongness = 0;
                 for (Player player : perspective.players()) {
-                    if (spies.indexOf(player.id()) != -1) {
-                        wrongness += Math.abs(player.bayesSuspicion() - 1);
-                    } else {
-                        wrongness += Math.abs(player.bayesSuspicion());
+                    if (!player.equals(perspective.me())) {
+                        wrongness += Math.pow(player.bayesSuspicion() - unknown, 2);
                     }
                 }
 
@@ -372,11 +371,11 @@ public class BayesSpyAgent implements Agent {
 
         //use the player at the start index in the team and recurse
         used[start] = true;
-        computeIncorrectness(select, start + 1, curr + 1, used, map);
+        computeUncertainty(select, start + 1, curr + 1, used, map);
 
         //don't use the player at the start index in the team and recurse
         used[start] = false;
-        computeIncorrectness(select, start + 1, curr, used, map);
+        computeUncertainty(select, start + 1, curr, used, map);
     }
 
     /**

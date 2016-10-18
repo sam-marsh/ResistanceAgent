@@ -1,10 +1,12 @@
 package core;
 
 import agent.bayes.BayesAgent;
-import agent.mcts.MCTSAgent;
+import agent.expert.LogicalAgent;
 
+import java.io.File;
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
-import java.io.*;
 /**
  * A Class to represent a single game of resistance
  * @author Tim French
@@ -38,7 +40,7 @@ public class Game{
 
   /**
    * Creates an empty game
-   * @param logFile path to the log file
+   * @param fName path to the log file
    * */
   public Game(String fName){
     logFile = new File(fName);
@@ -65,7 +67,7 @@ public class Game{
   private void log(String msg){
     if(logging){
       try{
-        FileWriter log = new FileWriter(logFile);
+        FileWriter log = new FileWriter(logFile, true);
         log.write(msg);
         log.close();
       }catch(IOException e){e.printStackTrace();}
@@ -229,6 +231,8 @@ public class Game{
     return traitors;  
   }
 
+  Set<Character> winners = new HashSet<Character>();
+
   /**
    * Conducts the game play, consisting of 5 rounds, each with a series of nominations and votes, and the eventual mission.
    * It logs the result of the game at the end.
@@ -265,25 +269,100 @@ public class Game{
         }
       }  
     }
-    if(fails>2) log("Government Wins! "+fails+" missions failed.");
-    else log("Resistance Wins! "+fails+" missions failed.");
-    log("The Government Spies were "+spyString+".");
+    if (fails > 2) {
+        spiesWon = true;
+        for (char c : spies) {
+            winners.add(c);
+        }
+    } else {
+        winners.addAll(players.keySet());
+        for (char c : spies)
+            winners.remove(c);
+    }
   }
 
+  boolean spiesWon;
+
+  public Set<Character> winners() {
+      return winners;
+  }
 
   /**
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
-    Game g = new Game();
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'A');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'C');
-    g.stopwatchOn();g.addPlayer(new BayesAgent());g.stopwatchOff(1000,'D');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'E');
-    g.setup();
-    g.play();
+      Map<Character, Data> map = new HashMap<Character, Data>();
+      for (char c = 'A'; c <= 'F'; ++c) {
+          Data data = new Data();
+          data.player = c;
+          map.put(c, data);
+      }
+      int i = 0;
+      while (i < 100) {
+          if (i % 5 == 0) System.out.println(100 * (double) i / 100 + "%");
+          Game g = new Game("out.txt");
+          g.addPlayer(new LogicalAgent());
+          g.addPlayer(new LogicalAgent());
+          g.addPlayer(new LogicalAgent());
+          g.addPlayer(new BayesAgent());
+          g.addPlayer(new BayesAgent());
+          g.addPlayer(new BayesAgent());
+          g.setup();
+          g.play();
+          for (Character c : g.winners) {
+              if (g.spiesWon) {
+                  map.get(c).swins += 1;
+                  map.get(c).splays += 1;
+              } else {
+                  map.get(c).rwins += 1;
+                  map.get(c).rplays += 1;
+              }
+          }
+          for (Character c : Arrays.asList('A', 'B', 'C', 'D', 'E', 'F')) {
+              if (!g.winners.contains(c)) {
+                  if (g.spiesWon) {
+                      map.get(c).rplays += 1;
+                  } else {
+                      map.get(c).splays += 1;
+                  }
+              }
+          }
+          ++i;
+      }
+      Data dl = new Data();
+      for (char c = 'A'; c <= 'C'; ++c) {
+          Data tmp = map.get(c);
+          dl.rwins += tmp.rwins;
+          dl.swins += tmp.swins;
+          dl.rplays += tmp.rplays;
+          dl.splays += tmp.splays;
+      }
+      Data db = new Data();
+      for (char c = 'D'; c <= 'F'; ++c) {
+          Data tmp = map.get(c);
+          db.rwins += tmp.rwins;
+          db.swins += tmp.swins;
+          db.rplays += tmp.rplays;
+          db.splays += tmp.splays;
+      }
+      System.out.println("LogicalAgent: " + dl);
+      System.out.println("BayesAgent: " + db);
   }
+
+  private static class Data {
+
+      char player;
+      int rplays;
+      int rwins;
+      int splays;
+      int swins;
+
+      @Override
+      public String toString() {
+          return String.format("{r=%.2f%%,s=%.2f%%}", (double) 100* rwins/ rplays, (double) 100*swins / splays);
+      }
+  }
+
 }  
         
         
