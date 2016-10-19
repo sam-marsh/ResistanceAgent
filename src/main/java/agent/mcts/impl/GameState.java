@@ -1,10 +1,6 @@
 package agent.mcts.impl;
 
-import agent.mcts.State;
-import agent.mcts.Transition;
-import agent.mcts.impl.transition.SabotageTransition;
-import agent.mcts.impl.transition.NominationTransition;
-import agent.mcts.impl.transition.VoteTransition;
+import agent.mcts.MCTS;
 
 import java.util.ArrayList;
 import java.util.HashSet;
@@ -15,7 +11,7 @@ import java.util.Set;
  * This represents the state of the game from the perspective of a spy.
  * That is, we have perfect information.
  */
-public class GameState implements State {
+public class GameState implements MCTS.State {
 
     private static final int[][] MISSION_NUMBERS = {
             { 2, 3, 2, 3, 3 },
@@ -262,7 +258,7 @@ public class GameState implements State {
     }
 
     @Override
-    public State copy() {
+    public MCTS.State copy() {
         GameState state = new GameState(players, spies, me);
         state.phase = phase;
         state.currentPlayer = currentPlayer;
@@ -277,26 +273,26 @@ public class GameState implements State {
     }
 
     @Override
-    public List<Transition> transitions() {
-        List<Transition> set = new ArrayList<Transition>();
+    public List<MCTS.Transition> transitions() {
+        List<MCTS.Transition> set = new ArrayList<MCTS.Transition>();
 
         switch (phase) {
             case NOMINATION: {
                 for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
-                    set.add(new NominationTransition(s));
+                    set.add(new ResistanceTransition.Nomination(s));
                 }
                 return set;
             }
             case MISSION: {
                 if (contains(mission, players.charAt(currentPlayer))) {
-                    set.add(new SabotageTransition(true));
+                    set.add(new ResistanceTransition.Sabotage(true));
                 }
-                set.add(new SabotageTransition(false));
+                set.add(new ResistanceTransition.Sabotage(false));
                 return set;
             }
             case VOTING:
-                set.add(new VoteTransition(true));
-                set.add(new VoteTransition(false));
+                set.add(new ResistanceTransition.Vote(true));
+                set.add(new ResistanceTransition.Vote(false));
                 return set;
         }
 
@@ -306,15 +302,15 @@ public class GameState implements State {
     private int startPlayer;
 
     @Override
-    public void transition(Transition transition) {
-        if (transition instanceof NominationTransition) {
-            mission = ((NominationTransition) transition).selection();
+    public void transition(MCTS.Transition transition) {
+        if (transition instanceof ResistanceTransition.Nomination) {
+            mission = ((ResistanceTransition.Nomination) transition).selection();
             phase = Phase.VOTING;
             currentPlayer = players.indexOf(me);
             startPlayer = players.indexOf(me);
             votes = 0;
-        } else if (transition instanceof VoteTransition) {
-            votes += ((VoteTransition) transition).yes() ? 1 : 0;
+        } else if (transition instanceof ResistanceTransition.Vote) {
+            votes += ((ResistanceTransition.Vote) transition).yes() ? 1 : 0;
             if (currentPlayer != before(startPlayer)) {
                 currentPlayer = after(currentPlayer);
             } else {
@@ -330,8 +326,8 @@ public class GameState implements State {
                 nominationAttempt++;
                 votes = 0;
             }
-        } else if (transition instanceof SabotageTransition) {
-            traitors += ((SabotageTransition) transition).sabotage() ? 1 : 0;
+        } else if (transition instanceof ResistanceTransition.Sabotage) {
+            traitors += ((ResistanceTransition.Sabotage) transition).sabotage() ? 1 : 0;
             if (currentPlayer != before(startPlayer)) {
                 currentPlayer = after(currentPlayer);
             } else {

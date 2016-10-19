@@ -1,10 +1,6 @@
 package agent.mcts.impl;
 
 import agent.mcts.MCTS;
-import agent.mcts.Transition;
-import agent.mcts.impl.transition.SabotageTransition;
-import agent.mcts.impl.transition.NominationTransition;
-import agent.mcts.impl.transition.VoteTransition;
 import core.Agent;
 
 /**
@@ -52,10 +48,10 @@ public class SearchAgent implements Agent {
             e.printStackTrace();
         }
 
-        Transition transition = searcher.transition();
+        MCTS.Transition transition = searcher.transition();
 
-        System.out.println("MAKING MOVE " + ((NominationTransition) transition).selection());
-        return ((NominationTransition) transition).selection();
+        System.out.println("MAKING MOVE " + ((ResistanceTransition.Nomination) transition).selection());
+        return ((ResistanceTransition.Nomination) transition).selection();
     }
 
     @Override
@@ -92,11 +88,11 @@ public class SearchAgent implements Agent {
         }
         System.out.println(state);
         long t1 = System.currentTimeMillis();
-        Transition transition = searcher.transition();
+        MCTS.Transition transition = searcher.transition();
         long t2 = System.currentTimeMillis();
-        System.out.println("VOTING: " + (t2 - t1) + " " + ((VoteTransition) transition).yes());
+        System.out.println("VOTING: " + (t2 - t1) + " " + ((ResistanceTransition.Vote) transition).yes());
 
-        return ((VoteTransition) transition).yes();
+        return ((ResistanceTransition.Vote) transition).yes();
     }
 
     @Override
@@ -130,10 +126,10 @@ public class SearchAgent implements Agent {
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-        Transition transition = searcher.transition();
+        MCTS.Transition transition = searcher.transition();
 
-        System.out.println("SABOTAGING: " + ((SabotageTransition) transition).sabotage());
-        return ((SabotageTransition) transition).sabotage();
+        System.out.println("SABOTAGING: " + ((ResistanceTransition.Sabotage) transition).sabotage());
+        return ((ResistanceTransition.Sabotage) transition).sabotage();
     }
 
     @Override
