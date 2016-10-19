@@ -1,7 +1,6 @@
 package agent.bayes;
 
 import agent.GameState;
-import agent.Mission;
 import agent.Player;
 import agent.ResistancePerspective;
 import core.Agent;
@@ -124,7 +123,7 @@ public class BayesSpyAgent implements Agent {
     public void get_ProposedMission(String leader, String mission) {
         lastNominatedLeader = leader;
         lastNominatedMission = mission;
-        state.proposedMission(new Mission(state, leader, mission));
+        state.proposedMission(new GameState.Mission(leader, mission));
     }
 
     /**
@@ -154,9 +153,9 @@ public class BayesSpyAgent implements Agent {
     public void get_Mission(String mission) {
         //pass the leader if we know it, which should always be the case
         if (mission.equals(lastNominatedMission)) {
-            state.mission(new Mission(state, lastNominatedLeader, lastNominatedMission));
+            state.mission(new GameState.Mission(lastNominatedLeader, lastNominatedMission));
         } else {
-            state.mission(new Mission(state, null, mission));
+            state.mission(new GameState.Mission(null, mission));
         }
     }
 
@@ -295,7 +294,7 @@ public class BayesSpyAgent implements Agent {
      * @param mission the mission to check
      * @return the number of spies on the mission
      */
-    private int numberOfSpiesOnMission(Mission mission) {
+    private int numberOfSpiesOnMission(GameState.Mission mission) {
         int n = 0;
         for (char c : mission.team())
             if (spies.indexOf(c) != -1)
@@ -331,7 +330,7 @@ public class BayesSpyAgent implements Agent {
                 return;
 
             //create a fake mission
-            Mission fake = new Mission(state, String.valueOf(me), sb.toString());
+            GameState.Mission fake = new GameState.Mission(String.valueOf(me), sb.toString());
             state.mission(fake);
             int sabotaged = numberOfSpiesOnMission(fake);
             state.mission().done(sabotaged);

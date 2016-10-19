@@ -1,6 +1,8 @@
 package agent;
 
 import java.util.Arrays;
+import java.util.HashSet;
+import java.util.Set;
 
 /**
  * Author: Sam Marsh
@@ -92,6 +94,60 @@ public class GameState {
         return String.format(
                 "GameState{numberOfPlayers=%d, numberOfSpies=%d, players=%s, round=%d, failures=%d}",
                 numberOfPlayers, numberOfSpies, Arrays.toString(players), round, failures);
+    }
+
+    public enum Team {
+
+        RESISTANCE,
+        GOVERNMENT
+
+    }
+
+    public static class Mission {
+
+        private final char leader;
+        private final Set<Character> team;
+
+        private int traitors;
+
+        public Mission(String _leader, String _team) {
+            leader = _leader.charAt(0);
+            team = new HashSet<Character>();
+            for (char id : _team.toCharArray()) {
+                team.add(id);
+            }
+            traitors = -1;
+        }
+
+        public boolean done() {
+            return traitors != -1;
+        }
+
+        public void undo() {
+            this.traitors = -1;
+        }
+
+        public void done(int traitors) {
+            this.traitors = traitors;
+        }
+
+        public int traitors() {
+            return traitors;
+        }
+
+        public char leader() {
+            return leader;
+        }
+
+        public Set<Character> team() {
+            return team;
+        }
+
+        @Override
+        public String toString() {
+            return String.format("Mission{leader=%s, team=%s, done=%s, traitors=%d}", leader, team, done(), traitors);
+        }
+
     }
 
 }

@@ -84,14 +84,14 @@ public class BayesResistanceAgent implements Agent {
         waitForCalculation();
         lastNominatedLeader = leader;
         lastNominatedMission = mission;
-        state.proposedMission(new Mission(state, leader, mission));
+        state.proposedMission(new GameState.Mission(leader, mission));
     }
 
     @Override
     public boolean do_Vote() {
         waitForCalculation();
 
-        Mission mission = state.proposedMission();
+        GameState.Mission mission = state.proposedMission();
         if (mission.leader() == perspective.me().id()) {
             return true;
         }
@@ -117,7 +117,7 @@ public class BayesResistanceAgent implements Agent {
     @Override
     public void get_Votes(String yays) {
         waitForCalculation();
-        Mission proposed = state.proposedMission();
+        GameState.Mission proposed = state.proposedMission();
         Set<Character> in = new HashSet<Character>(proposed.team());
         Set<Character> out = new HashSet<Character>(state.numberOfPlayers());
         Set<Character> votedYes = new HashSet<Character>(yays.length());
@@ -152,9 +152,9 @@ public class BayesResistanceAgent implements Agent {
     public void get_Mission(String mission) {
         waitForCalculation();
         if (mission.equals(lastNominatedMission)) {
-            state.mission(new Mission(state, lastNominatedLeader, lastNominatedMission));
+            state.mission(new GameState.Mission(lastNominatedLeader, lastNominatedMission));
         } else {
-            state.mission(new Mission(state, null, mission));
+            state.mission(new GameState.Mission(null, mission));
         }
     }
 

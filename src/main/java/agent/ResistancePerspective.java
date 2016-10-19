@@ -13,12 +13,12 @@ public class ResistancePerspective {
     private final GameState state;
     private final Player me;
     private final Map<Character, Player> players;
-    private final Team team;
+    private final GameState.Team team;
 
     public ResistancePerspective(GameState _state, String _me, String _players, String _spies) {
         state = _state;
         players = new HashMap<Character, Player>();
-        team = _spies.contains("?") ? Team.RESISTANCE : Team.GOVERNMENT;
+        team = _spies.contains("?") ? GameState.Team.RESISTANCE : GameState.Team.GOVERNMENT;
 
         double initialSuspicion = (double) _state.numberOfSpies() / (_state.numberOfPlayers() - 1);
 
@@ -45,7 +45,7 @@ public class ResistancePerspective {
         return players.values();
     }
 
-    public Team team() {
+    public GameState.Team team() {
         return team;
     }
 
