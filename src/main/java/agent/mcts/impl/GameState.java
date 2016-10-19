@@ -13,6 +13,9 @@ import java.util.Set;
  */
 public class GameState implements MCTS.State {
 
+    /**
+     * MISSION_NUMBERS[nplayers-5][round-1] is the number of players on a mission this round
+     */
     private static final int[][] MISSION_NUMBERS = {
             { 2, 3, 2, 3, 3 },
             { 2, 3, 4, 3, 4 },
@@ -105,7 +108,7 @@ public class GameState implements MCTS.State {
      *
      * @param traitors the number of traitors
      */
-    private void traitors(int traitors) {
+    public void traitors(int traitors) {
         this.traitors = traitors;
     }
 
@@ -153,7 +156,7 @@ public class GameState implements MCTS.State {
      *
      * @param votes the number of votes
      */
-    private void votes(int votes) {
+    public void votes(int votes) {
         this.votes = votes;
     }
 

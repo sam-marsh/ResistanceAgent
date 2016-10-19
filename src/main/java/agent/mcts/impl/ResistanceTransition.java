@@ -20,6 +20,11 @@ public abstract class ResistanceTransition implements MCTS.Transition {
             return selection;
         }
 
+        @Override
+        public String toString() {
+            return "Nomination[" + selection + "]";
+        }
+
     }
 
     public static class Sabotage extends ResistanceTransition {
@@ -34,6 +39,11 @@ public abstract class ResistanceTransition implements MCTS.Transition {
             return sabotage;
         }
 
+        @Override
+        public String toString() {
+            return "Sabotage[" + Boolean.toString(sabotage) + "]";
+        }
+
     }
 
     public static class Vote extends ResistanceTransition {
@@ -46,6 +56,11 @@ public abstract class ResistanceTransition implements MCTS.Transition {
 
         public boolean yes() {
             return yes;
+        }
+
+        @Override
+        public String toString() {
+            return "Vote[" + Boolean.toString(yes) + "]";
         }
 
     }

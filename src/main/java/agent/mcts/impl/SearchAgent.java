@@ -4,17 +4,37 @@ import agent.mcts.MCTS;
 import core.Agent;
 
 /**
- * Author: Sam Marsh
- * Date: 18/10/2016
+ *
  */
 public class SearchAgent implements Agent {
 
+    /**
+     * We only have one second to make our move... This is the amount of time we sleep the game thread
+     * in order to search for as long as possible.
+     */
+    private static final int DELAY_TIME = 800;
+
+    /**
+     * Whether the agent has been started yet.
+     */
     private boolean initialised;
+
+    /**
+     * The game state from the perspective of us (a spy - i.e. perfect information)
+     */
     private GameState state;
+
+    /**
+     * The searcher, used to pick our moves.
+     */
     private MCTS searcher;
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
+        //TODO remove this
         if (spies.contains("?")) System.exit(0);
         if (!initialised) {
             state = new GameState(players, spies, name.charAt(0));
@@ -22,130 +42,154 @@ public class SearchAgent implements Agent {
             searcher = new MCTS(state);
             initialised = true;
         }
+        //update the state
         state.round(mission);
         state.failures(failures);
         state.nominationAttempt(1);
-        if (mission == 6 && searcher != null) {
+        state.traitors(0);
+
+        //shut down the searcher so that the program can end (otherwise has random thread waiting so program doesn't
+        // terminate)
+        if (state.complete() && searcher != null) {
             searcher.shutdown();
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String do_Nominate(int number) {
-        long start = System.currentTimeMillis();
+        //update game state
         state.phase(GameState.Phase.NOMINATION);
         state.currentPlayer(state.players().indexOf(state.me()));
         state.currentLeader(state.players().indexOf(state.me()));
 
+        //start the search
         searcher.state(state);
         searcher.search();
 
-        long diff = System.currentTimeMillis() - start;
+        //delay as long as possible
+        sleep(DELAY_TIME);
 
-        try {
-            Thread.sleep((1000 - diff) * 4 / 5);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-
+        //get the best move
         MCTS.Transition transition = searcher.transition();
 
-        System.out.println("MAKING MOVE " + ((ResistanceTransition.Nomination) transition).selection());
+        System.out.println("MOVE: " + transition);
+        //perform the move
         return ((ResistanceTransition.Nomination) transition).selection();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_ProposedMission(String leader, String mission) {
+        //update game state
         state.currentLeader(state.players().indexOf(leader));
         state.mission(mission);
         state.phase(GameState.Phase.VOTING);
         state.currentPlayer(state.players().indexOf(state.me()));
-        if (state.currentLeader() != state.players().indexOf(state.me())) {
-            long start = System.currentTimeMillis();
 
-            searcher.state(state);
-            searcher.search();
-
-            long diff = System.currentTimeMillis() - start;
-
-            try {
-                Thread.sleep((100 - diff) * 4 / 5);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
-
-        }
+        //start the search
+        searcher.state(state);
+        searcher.search();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean do_Vote() {
-        if (state.currentLeader() == state.players().indexOf(state.me())) return true;
+        //delay as long as possible
+        sleep(DELAY_TIME);
 
-        try {
-            Thread.sleep(800);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
-        System.out.println(state);
-        long t1 = System.currentTimeMillis();
+        //get the best move
         MCTS.Transition transition = searcher.transition();
-        long t2 = System.currentTimeMillis();
-        System.out.println("VOTING: " + (t2 - t1) + " " + ((ResistanceTransition.Vote) transition).yes());
+        System.out.println("MOVE: " + transition);
 
+        //perform the move
         return ((ResistanceTransition.Vote) transition).yes();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Votes(String yays) {
+        //update state
         state.nominationAttempt(state.nominationAttempt() + 1);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Mission(String mission) {
+        //update state
         state.mission(mission);
-        if (mission.indexOf(state.me()) != -1) {
-            long start = System.currentTimeMillis();
-            state.phase(GameState.Phase.MISSION);
-            state.currentPlayer(state.players().indexOf(state.me()));
+        state.phase(GameState.Phase.MISSION);
+        state.currentPlayer(state.players().indexOf(state.me()));
 
+        //only search if i am on the mission, otherwise i won't be asked to sabotage
+        if (mission.indexOf(state.me()) != -1) {
+            //start the search
             searcher.state(state);
             searcher.search();
-            long diff = System.currentTimeMillis() - start;
-            try {
-                Thread.sleep((100 - diff) * 3 / 4);
-            } catch (InterruptedException e) {
-                e.printStackTrace();
-            }
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean do_Betray() {
-        try {
-            Thread.sleep(800);
-        } catch (InterruptedException e) {
-            e.printStackTrace();
-        }
+        //delay as long as possible
+        sleep(DELAY_TIME);
+
+        //get the best move
         MCTS.Transition transition = searcher.transition();
 
-        System.out.println("SABOTAGING: " + ((ResistanceTransition.Sabotage) transition).sabotage());
+        System.out.println("MOVE: " + transition);
+        //perform the move
         return ((ResistanceTransition.Sabotage) transition).sabotage();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Traitors(int traitors) {
-        //unused
+        //update state
+        state.traitors(traitors);
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String do_Accuse() {
         //don't bother
         return "";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Accusation(String accuser, String accused) {
         //ignore
+    }
+
+    /**
+     * Sleeps the current thread, ignores exceptions from interrupts.
+     *
+     * @param ms the time to sleep in milliseconds
+     */
+    private void sleep(int ms) {
+        try {
+            Thread.sleep(ms);
+        } catch (InterruptedException ignore) {}
     }
 
 }

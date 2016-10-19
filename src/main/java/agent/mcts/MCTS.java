@@ -1,5 +1,7 @@
 package agent.mcts;
 
+import agent.mcts.impl.GameState;
+
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -10,15 +12,47 @@ import java.util.concurrent.Future;
  */
 public class MCTS {
 
-    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
+    /**
+     * The selection expand for the root child. For The Resistance, {@link SelectionPolicy#MAX_CHILD} works much
+     * better than {@link SelectionPolicy#ROBUST_CHILD} (from experimentation).
+     */
+    private static final SelectionPolicy POLICY = SelectionPolicy.MAX_CHILD;
 
+    /**
+     * The random number generator used for random simulations, etc.
+     */
+    private static final Random RANDOM = new Random();
+
+    /**
+     * The thread which does the searching.
+     */
     private final ExecutorService executor;
+
+    /**
+     * Whether a search is in progress. Volatile since it needs to be accessed from two threads.
+     */
     private volatile boolean searching;
 
+    /**
+     * The initial state of the game.
+     */
     private State state;
+
+    /**
+     * The currently executing search.
+     */
     private Future<?> future;
+
+    /**
+     * The root of the search tree.
+     */
     private Node root;
 
+    /**
+     * Creates a new Monte Carlo Search tree from the given state.
+     *
+     * @param state the state to start searching from
+     */
     public MCTS(State state) {
         this.state = state;
         this.executor = Executors.newSingleThreadExecutor();
@@ -26,16 +60,29 @@ public class MCTS {
         this.future = null;
     }
 
-    public void state(State state) {
+    /**
+     * Updates the initial state. Cannot be called while searching.
+     *
+     * @param state the new state to search from
+     * @throws IllegalStateException if a search is in progress
+     */
+    public void state(State state) throws IllegalStateException {
+        if (searching || (future != null && !future.isDone())) {
+            transition();
+        }
         this.state = state;
     }
 
+    /**
+     * Begins the asynchronous search and returns immediately.
+     */
     public void search() {
         root = new Node(state);
         future = executor.submit(new Runnable() {
             @Override
             public void run() {
                 searching = true;
+                //continue to sample until the user tells us to stop
                 while (searching) {
                     select(state.copy(), root);
                 }
@@ -43,56 +90,92 @@ public class MCTS {
         });
     }
 
+    /**
+     * Finishes the search and returns the optimal move choice.
+     *
+     * @return the optimal transition to take from the root
+     */
     public Transition transition() {
         searching = false;
         try {
+            //wait until loop finishes
             future.get();
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
-        //TODO was getting an exception here caused by an empty child list? May have been fixed, but not sure...
-        return POLICY.choice(root).transition();
+        //get the best child according to the root child selection expand
+        return POLICY.choice(root).transition;
     }
 
+    /**
+     * Shuts down the executor.
+     */
     public void shutdown() {
         executor.shutdownNow();
     }
 
+    /**
+     * Step one: selection. Starting at the root, the selection expand is applied recursively
+     * to move through the tree structure.
+     *
+     * @param state the current state
+     * @param node the node to select from
+     */
     private void select(State state, Node node) {
-        Map.Entry<State, Node> pair = policy(state, node);
-        int[] scores = simulate(pair.getKey());
-        Node child = pair.getValue();
-        child.backPropagate(scores);
+        Result pair = expand(state, node);
+        int[] scores = simulate(pair.state);
+        pair.node.backPropagate(scores);
     }
 
-    private Map.Entry<State, Node> policy(State state, Node node) {
+    /**
+     * Step two: expansion. Child node added to expand the tree.
+     *
+     * @param state the current game state
+     * @param node the node to expand from
+     * @return the new node with the corresponding state
+     */
+    private Result expand(State state, Node node) {
+        //continue to loop until reach end
         while (!state.complete()) {
+            //expand the node
             if (!node.expanded()) {
                 node.expand(state);
             }
-            if (!node.unvisitedChildren().isEmpty()) {
-                Node child = node.unvisitedChildren().remove((int) (Math.random() * node.unvisitedChildren().size()));
-                node.addChild(child);
-                state.transition(child.transition());
-                return new AbstractMap.SimpleEntry<State, Node>(state, child);
+            if (!node.unvisited.isEmpty()) {
+                //choose a random unvisited child node, add to list of children for that node, transition into node
+                Node child = node.unvisited.remove(RANDOM.nextInt(node.unvisited.size()));
+                node.children.add(child);
+                //change state based on this node's transition
+                state.transition(child.transition);
+                return new Result(state, child);
             } else {
+                //visited all children of this node: so pick the best one
                 List<Node> best = findChildren(node);
                 if (best.isEmpty()) {
-                    return new AbstractMap.SimpleEntry<State, Node>(state, node);
+                    //no choices at all - return what was passed in
+                    return new Result(state, node);
                 }
-                Node last = best.get((int) (Math.random() * best.size()));
-                node = last;
-                state.transition(last.transition());
+                node = randomChoice(best);
+                //change state based on this node's transition
+                state.transition(node.transition);
             }
         }
-        return new AbstractMap.SimpleEntry<State, Node>(state, node);
+        return new Result(state, node);
     }
 
+    /**
+     * Exploration/exploitation: uses the UCT method to pick the best
+     * child node(s). This returns a list and not a single node because
+     * multiple children may be equal.
+     *
+     * @param node the node from which a child will be picked
+     * @return the best nodes to look at next
+     */
     private List<Node> findChildren(Node node) {
         double max = Double.NEGATIVE_INFINITY;
         List<Node> list = new ArrayList<Node>();
-        for (Node child : node.children()) {
-            double ucb = child.ucb();
+        for (Node child : node.children) {
+            double ucb = child.ucb1();
             if (ucb > max) {
                 list.clear();
                 list.add(child);
@@ -104,81 +187,134 @@ public class MCTS {
         return list;
     }
 
+    /**
+     * Step three: simulation. The game is played out from the given state to produce a final result.
+     *
+     * @param _state the state to simulate from
+     * @return the final scores
+     */
     private int[] simulate(State _state) {
         State state = _state.copy();
+        //keep looping until game complete
         while (!state.complete()) {
+            //pick a random transition and update state by taking that transition
             List<Transition> transitions = state.transitions();
-            Transition transition = transitions.get((int) (Math.random() * transitions.size()));
+            Transition transition = randomChoice(transitions);
             state.transition(transition);
         }
         return state.scores();
     }
 
-    public enum SelectionPolicy {
+    /**
+     * The selection expand for the root children.
+     */
+    private enum SelectionPolicy {
 
+        /**
+         * Take the node with the highest score.
+         */
         MAX_CHILD {
             @Override
             public Node choice(Node node) {
-                double max = Double.MIN_VALUE;
+                int max = Integer.MIN_VALUE;
                 List<Node> list = new ArrayList<Node>();
-                for (Node child : node.children()) {
-                    System.out.println(child);
-                    double score = child.score(node.player());
-                    if (score > max) {
-                        list.clear();
-                        max = score;
-                        list.add(child);
-                    } else if (score == max) {
-                        list.add(child);
-                    }
+                for (Node child : node.children) {
+                    max = updateMaximum(child, list, child.score[node.player], max);
                 }
-                return list.get((int) (Math.random() * list.size()));
+                return randomChoice(list);
             }
         },
 
+        /**
+         * Take the node with the highest visit count.
+         */
         ROBUST_CHILD {
             @Override
             public Node choice(Node node) {
                 int max = Integer.MIN_VALUE;
                 List<Node> list = new ArrayList<Node>();
-                for (Node child : node.children()) {
-                    int games = child.games();
-                    if (games > max) {
-                        list.clear();
-                        max = games;
-                        list.add(child);
-                    } else if (games == max) {
-                        list.add(child);
-                    }
+                for (Node child : node.children) {
+                    max = updateMaximum(child, list, child.games, max);
                 }
-                return list.get((int) (Math.random() * list.size()));
+                return randomChoice(list);
 
             }
         };
 
+        /**
+         * Given a node, chooses a child node based on this expand.
+         *
+         * @param node the node to randomChoice children from
+         * @return the 'best' child according to the expand
+         */
         public abstract Node choice(Node node);
 
     }
 
-    public static class Node {
+    /**
+     * Convenience method since this is used often in the MCTS algorithm. Checks if a node is better than or
+     * as good as the current best node, if so adds it to the list and returns the new max value.
+     *
+     * @param node the node to check
+     * @param list the list containing the maximum nodes
+     * @param value the node's value to check
+     * @param max the current maximum
+     * @return the new maximum
+     */
+    private static int updateMaximum(Node node, List<Node> list, int value, int max) {
+        if (value > max) {
+            list.clear();
+            max = value;
+            list.add(node);
+        } else if (value == max) {
+            list.add(node);
+        }
+        return max;
+    }
 
-        private static final double EXPLORATION_CONSTANT = Math.sqrt(2);
+    private static <T> T randomChoice(List<T> list) {
+        return list.get(RANDOM.nextInt(list.size()));
+    }
 
+    /**
+     * Represents a node in the game tree.
+     */
+    private static class Node {
+
+        //holds each player's score (in The Resistance, simply 0=on losing team and 1=winning team)
         private int[] score;
+        //the number of games carried out in this subtree
         private int games;
+        //the transition performed on the previous state
         private Transition transition;
-        private List<Node> unvisitedChildren;
+        //this node's children which have not been visited yet
+        private List<Node> unvisited;
+        //the children which HAVE been visited
         private List<Node> children;
+        //the node above us in the tree
         private Node parent;
+        //the current player at this node (c.f. minimax)
         private int player;
 
-        public Node(State state) {
+        /**
+         * Creates the root node.
+         *
+         * @param state the initial state
+         */
+        Node(State state) {
             this.children = new ArrayList<Node>();
             this.player = state.currentPlayer();
             this.score = new int[state.numPlayers()];
         }
 
-        public Node(State state, Transition transition, Node parent) {
+        /**
+         * Creates a node from acting on a state with a transition, having the given parent node.
+         *
+         * @param state the 'parent' state
+         * @param transition the transition to perform
+         * @param parent the node's parent
+         */
+        Node(State state, Transition transition, Node parent) {
             this.children = new ArrayList<Node>();
             this.parent = parent;
             this.transition = transition;
@@ -188,43 +324,29 @@ public class MCTS {
             this.score = new int[state.numPlayers()];
         }
 
-        public int player() {
-            return player;
+        /**
+         * @return whether this node has been expanded yet
+         */
+        boolean expanded() {
+            return unvisited != null;
         }
 
-        public int games() {
-            return games;
+        /**
+         * Calculates the UCB1 formula for the node.
+         * See https://en.wikipedia.org/wiki/Monte_Carlo_tree_search#Exploration_and_exploitation
+         *
+         * @return the UCB1 value
+         */
+        double ucb1() {
+            return (double) score[parent.player] / games + Math.sqrt(2 * Math.log(parent.games + 1) / games);
         }
 
-        public int score(int player) {
-            return score[player];
-        }
-
-        public Transition transition() {
-            return transition;
-        }
-
-        public void addChild(Node child) {
-            children.add(child);
-        }
-
-        public List<Node> children() {
-            return children;
-        }
-
-        public List<Node> unvisitedChildren() {
-            return unvisitedChildren;
-        }
-
-        public boolean expanded() {
-            return unvisitedChildren != null;
-        }
-
-        public double ucb() {
-            return (double) score[parent.player] / games + EXPLORATION_CONSTANT * Math.sqrt(Math.log(parent.games + 1) / games);
-        }
-
-        public void backPropagate(int[] score) {
+        /**
+         * Back-propagates a score all the way up the tree.
+         *
+         * @param score the array of player scores
+         */
+        void backPropagate(int[] score) {
             this.games++;
             for (int i = 0; i < score.length; i++)
                 this.score[i] += score[i];
@@ -233,43 +355,86 @@ public class MCTS {
             }
         }
 
-        public void expand(State state) {
+        /**
+         * Expands this node.
+         *
+         * @param state the state to expand from
+         */
+        void expand(State state) {
             List<Transition> transitions = state.transitions();
-            unvisitedChildren = new ArrayList<Node>();
+            unvisited = new ArrayList<Node>();
+            //for each possible transition, create a new child by acting on the state with that transition
+            // and then add them to the unvisited children list
             for (Transition transition : transitions) {
                 Node tempState = new Node(state, transition, this);
-                unvisitedChildren.add(tempState);
+                unvisited.add(tempState);
             }
-        }
-
-        @Override
-        public String toString() {
-            return String.format(
-                    "Node{score=%s, games=%d, transition=%s, player=%d}",
-                    Arrays.toString(score), games, transition, player
-            );
         }
 
     }
 
+    /**
+     * Represents the state of the game at a given time.
+     */
     public interface State {
 
+        /**
+         * @return an exact copy of the state: actions performed on this copy should not affect the original in any way
+         */
         State copy();
 
+        /**
+         * @return the transitions possible from this state
+         */
         List<Transition> transitions();
 
+        /**
+         * Modifies this state by performing the given transition.
+         *
+         * @param transition the transition to carry out
+         */
         void transition(Transition transition);
 
+        /**
+         * @return whether the game is over
+         */
         boolean complete();
 
+        /**
+         * @return the current player - should be an integer ranging from 0 upwards
+         */
         int currentPlayer();
 
+        /**
+         * @return the total number of players in the game
+         */
         int numPlayers();
 
+        /**
+         * @return the scores for each player (index 0 holds score for player 0, etc)
+         */
         int[] scores();
 
     }
 
+    /**
+     * A marker interface that represents a game transition.
+     */
     public interface Transition {}
+
+    /**
+     * A convenience class for holding a node with an associated state.
+     */
+    private class Result {
+
+        private final State state;
+        private final Node node;
+
+        Result(State state, Node node) {
+            this.state = state;
+            this.node = node;
+        }
+
+    }
 
 }

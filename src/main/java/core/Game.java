@@ -293,11 +293,11 @@ public class Game{
    **/
   public static void main(String[] args){
       Game g = new Game();
-      g.addPlayer(new LogicalAgent());
+      g.addPlayer(new BayesAgent());
+      g.addPlayer(new BayesAgent());
       g.addPlayer(new BayesAgent());
       g.addPlayer(new SearchAgent());
-      g.addPlayer(new LogicalAgent());
-      g.addPlayer(new RandomAgent());
+      g.addPlayer(new BayesAgent());
       g.setup();
       g.play();
       System.out.println(g.winners + " win!");

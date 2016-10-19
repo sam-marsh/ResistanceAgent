@@ -141,10 +141,11 @@ public class BayesSpyAgent implements Agent {
         return numberOfSpiesOnMission(state.proposedMission()) >= 1;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
-    public void get_Votes(String yays) {
-
-    }
+    public void get_Votes(String yays) {}
 
     /**
      * {@inheritDoc}
@@ -238,26 +239,35 @@ public class BayesSpyAgent implements Agent {
         return true;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Traitors(int traitors) {
         state.mission().done(traitors);
 
+        //start updating all resistance perspectives in parallel
         for (final ResistancePerspective perspective : perspectives) {
-            Future<?> future = executor.submit(new Runnable() {
+            futures.add(executor.submit(new Runnable() {
                 @Override
                 public void run() {
                     perspective.updateSuspicion();
                 }
-            });
-            futures.add(future);
+            }));
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String do_Accuse() {
         return "";
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void get_Accusation(String accuser, String accused) {}
 
@@ -379,6 +389,7 @@ public class BayesSpyAgent implements Agent {
 
     /**
      * Method for debugging/testing.
+     *
      * @return the game state
      */
     public GameState state() {
