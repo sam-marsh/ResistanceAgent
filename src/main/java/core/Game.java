@@ -1,7 +1,7 @@
 package core;
 
-import agent.bayes.BayesAgent;
-import agent.expert.LogicalAgent;
+import agent.mcts.impl.LogicalAgent;
+import agent.mcts.impl.MCTSAgent;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -291,6 +291,16 @@ public class Game{
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
+      Game g = new Game();
+      g.addPlayer(new LogicalAgent());
+      g.addPlayer(new LogicalAgent());
+      g.addPlayer(new MCTSAgent());
+      g.addPlayer(new LogicalAgent());
+      g.addPlayer(new LogicalAgent());
+      g.setup();
+      g.play();
+      System.out.println(g.winners + " win!");
+      /*
       Map<Character, Data> map = new HashMap<Character, Data>();
       for (char c = 'A'; c <= 'F'; ++c) {
           Data data = new Data();
@@ -349,6 +359,7 @@ public class Game{
       }
       System.out.println("LogicalAgent: " + dl);
       System.out.println("BayesAgent: " + db);
+      */
   }
 
   private static class Data {

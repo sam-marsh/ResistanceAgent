@@ -12,7 +12,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 
 /**
- * This is the spy agent. It uses Bayesian inference to decide on moves based on which options will minimise the
+ * This is the spy agent. It uses Bayesian inference to decide on transitions based on which options will minimise the
  * incorrectness of the opponent's knowledge.
  */
 public class BayesSpyAgent implements Agent {

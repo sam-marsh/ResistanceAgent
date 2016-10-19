@@ -1,6 +1,4 @@
-package agent.expert.transition;
-
-import agent.expert.MCTSPlayer;
+package agent.mcts.impl.transition;
 
 /**
  * Author: Sam Marsh
@@ -10,8 +8,8 @@ public class SelectionTransition extends ResistanceTransition {
 
     private String selection;
 
-    public SelectionTransition(MCTSPlayer player, String selection) {
-        super(player);
+    public SelectionTransition(boolean me, String selection) {
+        super(me);
         this.selection = selection;
     }
 
