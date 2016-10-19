@@ -1,8 +1,8 @@
 package agent.mcts;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
-import java.util.Set;
 
 /**
  * @author Sam Marsh
@@ -71,12 +71,12 @@ public class Node {
         return (double) score[parent.player] / games + EXPLORATION_CONSTANT * Math.sqrt(Math.log(parent.games + 1) / games);
     }
 
-    public void backpropagate(int[] score) {
+    public void backPropagate(int[] score) {
         this.games++;
         for (int i = 0; i < score.length; i++)
             this.score[i] += score[i];
         if (parent != null) {
-            parent.backpropagate(score);
+            parent.backPropagate(score);
         }
     }
 
@@ -87,6 +87,14 @@ public class Node {
             Node tempState = new Node(state, transition, this);
             unvisitedChildren.add(tempState);
         }
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "Node{score=%s, games=%d, transition=%s, player=%d}",
+                Arrays.toString(score), games, transition, player
+        );
     }
 
 }

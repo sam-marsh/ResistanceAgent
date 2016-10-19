@@ -6,15 +6,14 @@ package agent.mcts.impl.transition;
  */
 public class VoteTransition extends ResistanceTransition {
 
-    private final int votes;
+    private final boolean yes;
 
-    public VoteTransition(boolean me, int votes) {
-        super(me);
-        this.votes = votes;
+    public VoteTransition(boolean yes) {
+        this.yes = yes;
     }
 
-    public int votes() {
-        return votes;
+    public boolean yes() {
+        return yes;
     }
 
 }

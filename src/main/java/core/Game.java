@@ -1,7 +1,8 @@
 package core;
 
+import agent.bayes.BayesAgent;
 import agent.mcts.impl.LogicalAgent;
-import agent.mcts.impl.MCTSAgent;
+import agent.mcts.impl.SearchAgent;
 
 import java.io.File;
 import java.io.FileWriter;
@@ -293,10 +294,10 @@ public class Game{
   public static void main(String[] args){
       Game g = new Game();
       g.addPlayer(new LogicalAgent());
+      g.addPlayer(new BayesAgent());
+      g.addPlayer(new SearchAgent());
       g.addPlayer(new LogicalAgent());
-      g.addPlayer(new MCTSAgent());
-      g.addPlayer(new LogicalAgent());
-      g.addPlayer(new LogicalAgent());
+      g.addPlayer(new RandomAgent());
       g.setup();
       g.play();
       System.out.println(g.winners + " win!");

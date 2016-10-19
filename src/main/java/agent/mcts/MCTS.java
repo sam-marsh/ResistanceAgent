@@ -4,7 +4,6 @@ import java.util.AbstractMap;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -14,7 +13,7 @@ import java.util.concurrent.Future;
  */
 public class MCTS {
 
-    private static final SelectionPolicy POLICY = SelectionPolicy.MAX_CHILD;
+    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
 
     private final ExecutorService executor;
     private volatile boolean searching;
@@ -54,6 +53,7 @@ public class MCTS {
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
+        //TODO was getting an exception here caused by an empty child list? May have been fixed, but not sure...
         return POLICY.choice(root).transition();
     }
 
@@ -65,7 +65,7 @@ public class MCTS {
         Map.Entry<State, Node> pair = policy(state, node);
         int[] scores = simulate(pair.getKey());
         Node child = pair.getValue();
-        child.backpropagate(scores);
+        child.backPropagate(scores);
     }
 
     private Map.Entry<State, Node> policy(State state, Node node) {
@@ -125,6 +125,7 @@ public class MCTS {
                 double max = Double.MIN_VALUE;
                 List<Node> list = new ArrayList<Node>();
                 for (Node child : node.children()) {
+                    System.out.println(child);
                     double score = child.score(node.player());
                     if (score > max) {
                         list.clear();

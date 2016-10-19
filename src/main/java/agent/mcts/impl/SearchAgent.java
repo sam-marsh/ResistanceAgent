@@ -3,7 +3,7 @@ package agent.mcts.impl;
 import agent.mcts.MCTS;
 import agent.mcts.Transition;
 import agent.mcts.impl.transition.SabotageTransition;
-import agent.mcts.impl.transition.SelectionTransition;
+import agent.mcts.impl.transition.NominationTransition;
 import agent.mcts.impl.transition.VoteTransition;
 import core.Agent;
 
@@ -11,7 +11,7 @@ import core.Agent;
  * Author: Sam Marsh
  * Date: 18/10/2016
  */
-public class MCTSAgent implements Agent {
+public class SearchAgent implements Agent {
 
     private boolean initialised;
     private GameState state;
@@ -38,7 +38,7 @@ public class MCTSAgent implements Agent {
     public String do_Nominate(int number) {
         long start = System.currentTimeMillis();
         state.phase(GameState.Phase.NOMINATION);
-        state.currentPlayer(GameState.CURRENT_PLAYER_ME);
+        state.currentPlayer(state.players().indexOf(state.me()));
         state.currentLeader(state.players().indexOf(state.me()));
 
         searcher.state(state);
@@ -54,8 +54,8 @@ public class MCTSAgent implements Agent {
 
         Transition transition = searcher.transition();
 
-        System.out.println("MAKING MOVE " + ((SelectionTransition) transition).selection());
-        return ((SelectionTransition) transition).selection();
+        System.out.println("MAKING MOVE " + ((NominationTransition) transition).selection());
+        return ((NominationTransition) transition).selection();
     }
 
     @Override
@@ -63,8 +63,8 @@ public class MCTSAgent implements Agent {
         state.currentLeader(state.players().indexOf(leader));
         state.mission(mission);
         state.phase(GameState.Phase.VOTING);
-        state.currentPlayer(GameState.CURRENT_PLAYER_ME);
-        if (state.currentLeader() != state.me()) {
+        state.currentPlayer(state.players().indexOf(state.me()));
+        if (state.currentLeader() != state.players().indexOf(state.me())) {
             long start = System.currentTimeMillis();
 
             searcher.state(state);
@@ -83,20 +83,20 @@ public class MCTSAgent implements Agent {
 
     @Override
     public boolean do_Vote() {
-        if (state.currentLeader() == state.me()) return true;
+        if (state.currentLeader() == state.players().indexOf(state.me())) return true;
 
         try {
             Thread.sleep(800);
         } catch (InterruptedException e) {
             e.printStackTrace();
         }
-
+        System.out.println(state);
         long t1 = System.currentTimeMillis();
         Transition transition = searcher.transition();
         long t2 = System.currentTimeMillis();
-        System.out.println("VOTING: " + (t2 - t1) + " " + (((VoteTransition) transition).votes() != 0));
+        System.out.println("VOTING: " + (t2 - t1) + " " + ((VoteTransition) transition).yes());
 
-        return ((VoteTransition) transition).votes() != 0;
+        return ((VoteTransition) transition).yes();
     }
 
     @Override
@@ -110,7 +110,7 @@ public class MCTSAgent implements Agent {
         if (mission.indexOf(state.me()) != -1) {
             long start = System.currentTimeMillis();
             state.phase(GameState.Phase.MISSION);
-            state.currentPlayer(GameState.CURRENT_PLAYER_ME);
+            state.currentPlayer(state.players().indexOf(state.me()));
 
             searcher.state(state);
             searcher.search();
@@ -132,8 +132,8 @@ public class MCTSAgent implements Agent {
         }
         Transition transition = searcher.transition();
 
-        System.out.println("SABOTAGING: " + (((SabotageTransition) transition).traitors() != 0));
-        return ((SabotageTransition) transition).traitors() != 0;
+        System.out.println("SABOTAGING: " + ((SabotageTransition) transition).sabotage());
+        return ((SabotageTransition) transition).sabotage();
     }
 
     @Override

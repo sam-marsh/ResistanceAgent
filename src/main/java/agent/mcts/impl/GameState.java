@@ -3,7 +3,7 @@ package agent.mcts.impl;
 import agent.mcts.State;
 import agent.mcts.Transition;
 import agent.mcts.impl.transition.SabotageTransition;
-import agent.mcts.impl.transition.SelectionTransition;
+import agent.mcts.impl.transition.NominationTransition;
 import agent.mcts.impl.transition.VoteTransition;
 
 import java.util.ArrayList;
@@ -16,9 +16,6 @@ import java.util.Set;
  * That is, we have perfect information.
  */
 public class GameState implements State {
-
-    public static final int CURRENT_PLAYER_ME = 0;
-    public static final int CURRENT_PLAYER_NOT_ME = 1;
 
     private static final int[][] MISSION_NUMBERS = {
             { 2, 3, 2, 3, 3 },
@@ -104,6 +101,7 @@ public class GameState implements State {
         this.players = players;
         this.spies = spies;
         this.me = me;
+        this.nominationAttempt = 1;
     }
 
     /**
@@ -285,79 +283,67 @@ public class GameState implements State {
         switch (phase) {
             case NOMINATION: {
                 for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
-                    set.add(new SelectionTransition(players.charAt(currentLeader) == me, s));
+                    set.add(new NominationTransition(s));
                 }
                 return set;
             }
             case MISSION: {
-                if (currentPlayer == CURRENT_PLAYER_ME) {
-                    if (contains(mission, me)) {
-                        set.add(new SabotageTransition(true, 1));
-                    }
-                    set.add(new SabotageTransition(true, 0));
-                    return set;
-                } else {
-                    for (int i = 0; i <= numSpiesOnMissionNotIncludingMe(); ++i) {
-                        set.add(new SabotageTransition(false, i));
-                    }
-                    return set;
+                if (contains(mission, players.charAt(currentPlayer))) {
+                    set.add(new SabotageTransition(true));
                 }
+                set.add(new SabotageTransition(false));
+                return set;
             }
             case VOTING:
-                if (currentPlayer == CURRENT_PLAYER_ME) {
-                    set.add(new VoteTransition(true, 1));
-                    set.add(new VoteTransition(true, 0));
-                    return set;
-                } else {
-                    for (int i = 0; i <= players.length() - 1; ++i) {
-                        set.add(new VoteTransition(true, i));
-                    }
-                    return set;
-                }
+                set.add(new VoteTransition(true));
+                set.add(new VoteTransition(false));
+                return set;
         }
 
         return set;
     }
 
+    private int startPlayer;
+
     @Override
     public void transition(Transition transition) {
-        if (transition instanceof SelectionTransition) {
-            mission = ((SelectionTransition) transition).selection();
+        if (transition instanceof NominationTransition) {
+            mission = ((NominationTransition) transition).selection();
             phase = Phase.VOTING;
-            currentPlayer = CURRENT_PLAYER_ME;
+            currentPlayer = players.indexOf(me);
+            startPlayer = players.indexOf(me);
             votes = 0;
-            nominationAttempt = 1;
         } else if (transition instanceof VoteTransition) {
-            votes += ((VoteTransition) transition).votes();
-            if (currentPlayer == CURRENT_PLAYER_ME) {
-                currentPlayer = CURRENT_PLAYER_NOT_ME;
+            votes += ((VoteTransition) transition).yes() ? 1 : 0;
+            if (currentPlayer != before(startPlayer)) {
+                currentPlayer = after(currentPlayer);
             } else {
                 if (votes >= Math.ceil((double) players.length() / 2) || nominationAttempt == 5) {
                     phase = Phase.MISSION;
-                    currentPlayer = CURRENT_PLAYER_ME;
+                    traitors = 0;
                 } else {
                     nextLeader();
                     phase = Phase.NOMINATION;
                 }
+                startPlayer = players.indexOf(me);
+                currentPlayer = players.indexOf(me);
                 nominationAttempt++;
-                currentPlayer = CURRENT_PLAYER_ME;
+                votes = 0;
             }
         } else if (transition instanceof SabotageTransition) {
-            traitors += ((SabotageTransition) transition).traitors();
-            if (currentPlayer == CURRENT_PLAYER_ME) {
-                currentPlayer = CURRENT_PLAYER_NOT_ME;
+            traitors += ((SabotageTransition) transition).sabotage() ? 1 : 0;
+            if (currentPlayer != before(startPlayer)) {
+                currentPlayer = after(currentPlayer);
             } else {
                 if (traitors != 0 && (traitors != 1 || round != 4 || numberOfPlayers() < 7)) {
                     failures++;
                 }
                 phase = Phase.NOMINATION;
                 nextLeader();
+                startPlayer = players.indexOf(me);
+                currentPlayer = players.indexOf(me);
+                nominationAttempt = 1;
                 round++;
-                if (players.charAt(currentLeader) == me) {
-                    currentPlayer = CURRENT_PLAYER_ME;
-                } else {
-                    currentPlayer = CURRENT_PLAYER_NOT_ME;
-                }
             }
         }
     }
@@ -374,36 +360,49 @@ public class GameState implements State {
 
     public void currentPlayer(int player) {
         this.currentPlayer = player;
+        this.startPlayer = player;
     }
 
     @Override
     public int numPlayers() {
-        return 2;
+        return players().length();
     }
 
     @Override
     public int[] scores() {
-        if (spyPoints() >= 3) {
-            return new int[] { 1, 0 };
-        } else {
-            return new int[] { 0, 1 };
+        int[] scores = new int[numberOfPlayers()];
+        for (int i = 0; i < scores.length; ++i) {
+            if (spies.indexOf(players.charAt(i)) != -1) {
+                scores[i] = spyPoints() >= 3 ? 1 : 0;
+            } else {
+                scores[i] = resistancePoints() >= 3 ? 1 : 0;
+            }
+        }
+        return scores;
+    }
+
+    private void combinations(char[] array, int len, int start, char[] result, Set<String> set) {
+        if (len == 0) {
+            set.add(new String(result));
+            return;
+        }
+        for (int i = start; i <= array.length - len; ++i) {
+            result[result.length - len] = array[i];
+            combinations(array, len - 1, i + 1, result, set);
         }
     }
 
-    private void combinations(int n, char[] k, char[] a, Set<String> set) {
-        if (n <= 0) {
-            set.add(new String(a));
-        } else {
-            for (char c : k) {
-                a[n - 1] = c;
-                combinations(n - 1, k, a, set);
-            }
-        }
+    private int before(int i) {
+        return (i - 1 + players().length()) % players().length();
+    }
+
+    private int after(int i) {
+        return (i + 1) % players.length();
     }
 
     private Set<String> combinations(String s, int n) {
         Set<String> set = new HashSet<String>();
-        combinations(n, s.toCharArray(), new char[n], set);
+        combinations(s.toCharArray(), n, 0, new char[n], set);
         return set;
     }
 
@@ -427,6 +426,16 @@ public class GameState implements State {
 
     public char me() {
         return me;
+    }
+
+    @Override
+    public String toString() {
+        return String.format(
+                "GameState{players='%s', spies='%s', me=%s, phase=%s, currentPlayer=%d, currentLeader=%d, round=%d, " +
+                        "failures=%d, nominationAttempt=%d, votes=%d, mission='%s', traitors=%d}",
+                players, spies, me, phase, currentPlayer, currentLeader, round, failures,
+                nominationAttempt, votes, mission, traitors
+        );
     }
 
     /**

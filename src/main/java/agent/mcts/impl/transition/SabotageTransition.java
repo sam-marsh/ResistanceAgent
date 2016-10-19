@@ -6,15 +6,14 @@ package agent.mcts.impl.transition;
  */
 public class SabotageTransition extends ResistanceTransition {
 
-    private final int traitors;
+    private final boolean sabotage;
 
-    public SabotageTransition(boolean me, int traitors) {
-        super(me);
-        this.traitors = traitors;
+    public SabotageTransition(boolean sabotage) {
+        this.sabotage = sabotage;
     }
 
-    public int traitors() {
-        return traitors;
+    public boolean sabotage() {
+        return sabotage;
     }
 
 }
