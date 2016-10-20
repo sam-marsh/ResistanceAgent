@@ -39,6 +39,8 @@ public class BayesResistanceAgent implements Agent {
             executor.shutdownNow();
         }
 
+        waitForCalculation();
+        System.out.println(perspective);
     }
 
     @Override

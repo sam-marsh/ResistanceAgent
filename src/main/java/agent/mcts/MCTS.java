@@ -82,10 +82,13 @@ public class MCTS {
             @Override
             public void run() {
                 searching = true;
+                int i = 0;
                 //continue to sample until the user tells us to stop
                 while (searching) {
                     select(state.copy(), root);
+                    ++i;
                 }
+                System.out.println(i);
             }
         });
     }

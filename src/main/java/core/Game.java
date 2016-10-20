@@ -293,10 +293,10 @@ public class Game{
    **/
   public static void main(String[] args){
       Game g = new Game();
-      g.addPlayer(new BayesAgent());
-      g.addPlayer(new BayesAgent());
-      g.addPlayer(new BayesAgent());
       g.addPlayer(new SearchAgent());
+      g.addPlayer(new BayesAgent());
+      g.addPlayer(new BayesAgent());
+      g.addPlayer(new BayesAgent());
       g.addPlayer(new BayesAgent());
       g.setup();
       g.play();
