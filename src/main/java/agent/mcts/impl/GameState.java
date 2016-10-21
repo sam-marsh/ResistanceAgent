@@ -2,10 +2,7 @@ package agent.mcts.impl;
 
 import agent.mcts.MCTS;
 
-import java.util.ArrayList;
-import java.util.HashSet;
-import java.util.List;
-import java.util.Set;
+import java.util.*;
 
 /**
  * This represents the state of the game from the perspective of a spy.
@@ -89,6 +86,8 @@ public class GameState implements MCTS.State {
      */
     private int traitors;
 
+    private Map<Character, Perspective> map;
+
     /**
      * Creates a new game state with given resistance players and government spies.
      *
@@ -101,6 +100,14 @@ public class GameState implements MCTS.State {
         this.spies = spies;
         this.me = me;
         this.nominationAttempt = 1;
+        this.currentPlayer = players.indexOf(me);
+        this.startPlayer = players.indexOf(me);
+        this.map = new HashMap<Character, Perspective>(players.length() - spies.length());
+        for (char id : players.toCharArray()) {
+            if (!contains(spies, id)) {
+                map.put(id, new Perspective(id, players.toCharArray(), spies.length()));
+            }
+        }
     }
 
     /**
@@ -272,7 +279,85 @@ public class GameState implements MCTS.State {
         state.votes = votes;
         state.mission = mission;
         state.traitors = traitors;
+        state.startPlayer = startPlayer;
+        state.map = new HashMap<Character, Perspective>(map.size());
+        for (Map.Entry<Character, Perspective> entry : map.entrySet()) {
+            state.map.put(entry.getKey(), new Perspective(entry.getValue()));
+        }
         return state;
+    }
+
+    public void update(String mission, int traitors) {
+        char[] array = mission.toCharArray();
+        for (Perspective perspective : map.values()) {
+            perspective.update(array, traitors);
+        }
+    }
+
+    public Collection<Perspective> perspectives() {
+        return map.values();
+    }
+
+    @Override
+    public Map<MCTS.Transition, Double> weightedTransitions() {
+        Map<MCTS.Transition, Double> transitions = new HashMap<MCTS.Transition, Double>();
+
+        switch (phase) {
+            case NOMINATION: {
+                if (me == players.charAt(currentLeader) || contains(spies, players.charAt(currentLeader))) {
+                    for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
+                        transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                    }
+                } else {
+                    Perspective perspective = map.get(players.charAt(currentLeader));
+                    List<Map.Entry<String, Double>> list = new ArrayList<Map.Entry<String, Double>>();
+                    for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
+                        if (contains(s, players.charAt(currentLeader))) {
+                            double suspicion = 0;
+                            for (char c : s.toCharArray()) {
+                                suspicion += perspective.lookup(c);
+                            }
+                            list.add(new AbstractMap.SimpleImmutableEntry<String, Double>(s, suspicion));
+                        }
+                    }
+                    Collections.shuffle(list);
+                    Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
+                        @Override
+                        public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
+                            return (int) Math.signum(o2.getValue() - o1.getValue());
+                        }
+                    });
+                    for (int i = 0; i < list.size(); ++i) {
+                        transitions.put(new ResistanceTransition.Nomination(list.get(i).getKey()), (double) (i + 1) / list.size());
+                    }
+                }
+                return transitions;
+            }
+            case MISSION: {
+                if (contains(mission, players.charAt(currentPlayer)) && contains(spies, players.charAt(currentPlayer))) {
+                    transitions.put(new ResistanceTransition.Sabotage(true), 1.0);
+                }
+                transitions.put(new ResistanceTransition.Sabotage(false), 1.0);
+                return transitions;
+            }
+            case VOTING: {
+                if (me == players.charAt(currentPlayer) || contains(spies, players.charAt(currentPlayer))) {
+                    transitions.put(new ResistanceTransition.Vote(true), 1.0);
+                    transitions.put(new ResistanceTransition.Vote(false), 1.0);
+                } else {
+                    Perspective perspective = map.get(players.charAt(currentPlayer));
+                    double suspicion = 0;
+                    for (char c : mission.toCharArray()) {
+                        suspicion += perspective.lookup(c);
+                    }
+                    transitions.put(new ResistanceTransition.Vote(true), mission.length() - suspicion);
+                    transitions.put(new ResistanceTransition.Vote(false), suspicion);
+                }
+                return transitions;
+            }
+        }
+
+        throw new AssertionError();
     }
 
     @Override
@@ -287,16 +372,18 @@ public class GameState implements MCTS.State {
                 return set;
             }
             case MISSION: {
-                if (contains(mission, players.charAt(currentPlayer))) {
+                if (contains(mission, players.charAt(currentPlayer)) && contains(spies, players.charAt(currentPlayer))) {
                     set.add(new ResistanceTransition.Sabotage(true));
                 }
                 set.add(new ResistanceTransition.Sabotage(false));
+
                 return set;
             }
-            case VOTING:
+            case VOTING: {
                 set.add(new ResistanceTransition.Vote(true));
                 set.add(new ResistanceTransition.Vote(false));
                 return set;
+            }
         }
 
         return set;
@@ -309,24 +396,26 @@ public class GameState implements MCTS.State {
         if (transition instanceof ResistanceTransition.Nomination) {
             mission = ((ResistanceTransition.Nomination) transition).selection();
             phase = Phase.VOTING;
-            currentPlayer = players.indexOf(me);
-            startPlayer = players.indexOf(me);
             votes = 0;
+            currentLeader = after(currentLeader);
+            startPlayer = players.indexOf(me);
+            currentPlayer = players.indexOf(me);
         } else if (transition instanceof ResistanceTransition.Vote) {
             votes += ((ResistanceTransition.Vote) transition).yes() ? 1 : 0;
             if (currentPlayer != before(startPlayer)) {
                 currentPlayer = after(currentPlayer);
             } else {
+                startPlayer = players.indexOf(me);
+                currentPlayer = players.indexOf(me);
                 if (votes >= Math.ceil((double) players.length() / 2) || nominationAttempt == 5) {
                     phase = Phase.MISSION;
                     traitors = 0;
+                    nominationAttempt = 1;
                 } else {
                     nextLeader();
                     phase = Phase.NOMINATION;
+                    nominationAttempt++;
                 }
-                startPlayer = players.indexOf(me);
-                currentPlayer = players.indexOf(me);
-                nominationAttempt++;
                 votes = 0;
             }
         } else if (transition instanceof ResistanceTransition.Sabotage) {
@@ -334,14 +423,21 @@ public class GameState implements MCTS.State {
             if (currentPlayer != before(startPlayer)) {
                 currentPlayer = after(currentPlayer);
             } else {
+                startPlayer = players.indexOf(me);
+                currentPlayer = players.indexOf(me);
                 if (traitors != 0 && (traitors != 1 || round != 4 || numberOfPlayers() < 7)) {
                     failures++;
                 }
+                try {
+                    update(mission, traitors);
+                } catch (AssertionError e) {
+                    System.out.println(this + " " + currentPlayer + " " + startPlayer);
+                    throw new Error(e);
+                }
+                traitors = 0;
                 phase = Phase.NOMINATION;
-                nextLeader();
-                startPlayer = players.indexOf(me);
-                currentPlayer = players.indexOf(me);
                 nominationAttempt = 1;
+                votes = 0;
                 round++;
             }
         }
@@ -354,7 +450,7 @@ public class GameState implements MCTS.State {
 
     @Override
     public int currentPlayer() {
-        return currentPlayer;
+        return phase == Phase.NOMINATION ? currentLeader : currentPlayer;
     }
 
     public void currentPlayer(int player) {
@@ -435,6 +531,10 @@ public class GameState implements MCTS.State {
                 players, spies, me, phase, currentPlayer, currentLeader, round, failures,
                 nominationAttempt, votes, mission, traitors
         );
+    }
+
+    public void startPlayer(int player) {
+        this.startPlayer = player;
     }
 
     /**

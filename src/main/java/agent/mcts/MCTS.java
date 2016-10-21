@@ -16,7 +16,7 @@ public class MCTS {
      * The selection expand for the root child. For The Resistance, {@link SelectionPolicy#MAX_CHILD} works much
      * better than {@link SelectionPolicy#ROBUST_CHILD} (from experimentation).
      */
-    private static final SelectionPolicy POLICY = SelectionPolicy.MAX_CHILD;
+    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
 
     /**
      * The random number generator used for random simulations, etc.
@@ -70,7 +70,7 @@ public class MCTS {
         if (searching || (future != null && !future.isDone())) {
             transition();
         }
-        this.state = state;
+        this.state = state.copy();
     }
 
     /**
@@ -82,13 +82,10 @@ public class MCTS {
             @Override
             public void run() {
                 searching = true;
-                int i = 0;
                 //continue to sample until the user tells us to stop
                 while (searching) {
                     select(state.copy(), root);
-                    ++i;
                 }
-                System.out.println(i);
             }
         });
     }
@@ -201,11 +198,25 @@ public class MCTS {
         //keep looping until game complete
         while (!state.complete()) {
             //pick a random transition and update state by taking that transition
-            List<Transition> transitions = state.transitions();
+            Map<Transition, Double> transitions = state.weightedTransitions();
             Transition transition = randomChoice(transitions);
             state.transition(transition);
         }
         return state.scores();
+    }
+
+    private <T> T randomChoice(Map<T, Double> weightedMap) {
+        double totalWeight = 0;
+        T selected = null;
+        for (Map.Entry<T, Double> entry : weightedMap.entrySet()) {
+            double weight = entry.getValue();
+            double r = RANDOM.nextDouble() * (totalWeight + weight);
+            if (r >= totalWeight) {
+                selected = entry.getKey();
+            }
+            totalWeight += weight;
+        }
+        return selected;
     }
 
     /**
@@ -390,6 +401,8 @@ public class MCTS {
          * @return the transitions possible from this state
          */
         List<Transition> transitions();
+
+        Map<Transition, Double> weightedTransitions();
 
         /**
          * Modifies this state by performing the given transition.

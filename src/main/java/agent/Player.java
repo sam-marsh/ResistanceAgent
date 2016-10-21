@@ -61,10 +61,7 @@ public class Player {
      * @return the likelihood that the player will betray the mission
      */
     public double likelihoodToBetray(GameState state, Collection<Player> spiesOnMission) {
-        if (spiesOnMission.size() == 1) {
-            return 0.95;
-        }
-        return 0.9 / spiesOnMission.size();
+        return 0.95 / spiesOnMission.size();
     }
 
     public boolean definitelyASpy() {

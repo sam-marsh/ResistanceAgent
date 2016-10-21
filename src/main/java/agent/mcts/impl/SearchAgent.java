@@ -47,6 +47,7 @@ public class SearchAgent implements Agent {
         state.failures(failures);
         state.nominationAttempt(1);
         state.traitors(0);
+        state.phase(GameState.Phase.NOMINATION);
 
         //shut down the searcher so that the program can end (otherwise has random thread waiting so program doesn't
         // terminate)
@@ -90,10 +91,10 @@ public class SearchAgent implements Agent {
         state.mission(mission);
         state.phase(GameState.Phase.VOTING);
         state.currentPlayer(state.players().indexOf(state.me()));
+        state.startPlayer(state.players().indexOf(state.me()));
 
+        ++attempt;
         //start the search
-        searcher.state(state);
-        searcher.search();
     }
 
     /**
@@ -101,6 +102,9 @@ public class SearchAgent implements Agent {
      */
     @Override
     public boolean do_Vote() {
+        searcher.state(state);
+        searcher.search();
+
         //delay as long as possible
         sleep(DELAY_TIME);
 
@@ -119,17 +123,25 @@ public class SearchAgent implements Agent {
     public void get_Votes(String yays) {
         //update state
         state.nominationAttempt(state.nominationAttempt() + 1);
+        state.phase(GameState.Phase.MISSION);
     }
+
+    private String lastMission;
+    private int attempt = 1;
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void get_Mission(String mission) {
+        attempt = 1;
+        lastMission = mission;
         //update state
         state.mission(mission);
         state.phase(GameState.Phase.MISSION);
         state.currentPlayer(state.players().indexOf(state.me()));
+        state.startPlayer(state.players().indexOf(state.me()));
+        state.traitors(0);
 
         //only search if i am on the mission, otherwise i won't be asked to sabotage
         if (mission.indexOf(state.me()) != -1) {
@@ -149,8 +161,8 @@ public class SearchAgent implements Agent {
 
         //get the best move
         MCTS.Transition transition = searcher.transition();
-
         System.out.println("MOVE: " + transition);
+
         //perform the move
         return ((ResistanceTransition.Sabotage) transition).sabotage();
     }
@@ -162,6 +174,7 @@ public class SearchAgent implements Agent {
     public void get_Traitors(int traitors) {
         //update state
         state.traitors(traitors);
+        state.update(lastMission, traitors);
     }
 
     /**

@@ -85,7 +85,7 @@ public class Game{
    * */
   public void addPlayer(Agent a){
     if(numPlayers > 9) throw new RuntimeException("Too many players");
-    else if(started) throw new RuntimeException("core.Game already underway");
+    else if(started) throw new RuntimeException("Game already underway");
     else{
       Character name = (char)(65+numPlayers++);
       players.put(name, a);
@@ -99,7 +99,7 @@ public class Game{
    */
   public void setup(){
     if(numPlayers < 5) throw new RuntimeException("Too few players");
-    else if(started) throw new RuntimeException("core.Game already underway");
+    else if(started) throw new RuntimeException("Game already underway");
     else{
       for(int i = 0; i<spyNum[numPlayers-5]; i++){
         char spy = ' ';
@@ -112,7 +112,7 @@ public class Game{
       for(Character c: spies){spyString+=c; resString+='?';}
       statusUpdate(1,0);
       started= true;
-      log("core.Game set up. Spys allocated");
+      log("Game set up. Spys allocated");
     }
   }
 
