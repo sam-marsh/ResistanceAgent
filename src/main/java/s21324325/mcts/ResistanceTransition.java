@@ -1,4 +1,4 @@
-package agent.mcts;
+package s21324325.mcts;
 
 /**
  * the types of moves possible in the resistance game

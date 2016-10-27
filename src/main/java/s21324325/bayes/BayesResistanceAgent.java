@@ -1,7 +1,9 @@
-package agent.bayes;
+package s21324325.bayes;
 
-import agent.*;
 import cits3001_2016s2.Agent;
+import s21324325.GameState;
+import s21324325.Player;
+import s21324325.ResistancePerspective;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;

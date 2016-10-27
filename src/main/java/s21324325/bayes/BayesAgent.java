@@ -1,4 +1,4 @@
-package agent.bayes;
+package s21324325.bayes;
 
 import cits3001_2016s2.Agent;
 

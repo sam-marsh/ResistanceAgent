@@ -1,12 +1,10 @@
-package agent.util;
+package s21324325.util;
 
 import org.junit.Test;
 
 import java.util.Collection;
 import java.util.Iterator;
 import java.util.LinkedList;
-
-import static org.junit.Assert.*;
 
 /**
  * Author: Sam Marsh

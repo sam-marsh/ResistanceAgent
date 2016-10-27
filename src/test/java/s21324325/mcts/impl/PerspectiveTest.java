@@ -1,6 +1,6 @@
-package agent.mcts.impl;
+package s21324325.mcts.impl;
 
-import agent.mcts.Perspective;
+import s21324325.mcts.Perspective;
 import org.junit.Test;
 
 /**

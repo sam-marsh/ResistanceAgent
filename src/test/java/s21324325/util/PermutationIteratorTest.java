@@ -1,10 +1,8 @@
-package agent.util;
+package s21324325.util;
 
 import org.junit.Test;
 
 import java.util.*;
-
-import static org.junit.Assert.*;
 
 /**
  * Author: Sam Marsh
