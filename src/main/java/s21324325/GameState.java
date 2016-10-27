@@ -84,7 +84,17 @@ public class GameState implements MCTS.State {
      */
     private int traitors;
 
+    /**
+     * Holds the perspective of each resistance member in the game, to use as an opponent model: players
+     * are less likely to choose teams which they think contain spies, etc.
+     */
     private Map<Character, Perspective> map;
+
+    /**
+     * Used to keep track of game state (which players turn it is). When we reach player (startPlayer - 1), the
+     * voting stage is over (as an example).
+     */
+    private int startPlayer;
 
     /**
      * Creates a new game state with given resistance players and government spies.
@@ -93,7 +103,7 @@ public class GameState implements MCTS.State {
      * @param spies the spies
      * @param me my character identifier
      */
-    public GameState(String players, String spies, char me) {
+    GameState(String players, String spies, char me) {
         this.players = players;
         this.spies = spies;
         this.me = me;
@@ -118,26 +128,12 @@ public class GameState implements MCTS.State {
     }
 
     /**
-     * @return the number of traitors on a mission
-     */
-    private int traitors() {
-        return traitors;
-    }
-
-    /**
      * Updates the game phase.
      *
      * @param phase the new phase
      */
-    public void phase(Phase phase) {
+    void phase(Phase phase) {
         this.phase = phase;
-    }
-
-    /**
-     * @return the current phase of the game
-     */
-    private Phase phase() {
-        return phase;
     }
 
     /**
@@ -150,43 +146,13 @@ public class GameState implements MCTS.State {
     }
 
     /**
-     * @return the current mission, either being proposed or executed
-     */
-    private String mission() {
-        return mission;
-    }
-
-    /**
-     * Updates the number of votes for the proposed mission.
-     *
-     * @param votes the number of votes
-     */
-    public void votes(int votes) {
-        this.votes = votes;
-    }
-
-    /**
-     * @return the number of votes for the mission currently being proposed
-     */
-    private int votes() {
-        return votes;
-    }
-
-    /**
      * Shifts to the next leader.
      */
     private void nextLeader() {
         currentLeader = (currentLeader + 1) % numberOfPlayers();
     }
 
-    /**
-     * @return the current mission leader
-     */
-    public int currentLeader() {
-        return currentLeader;
-    }
-
-    public void currentLeader(int leader) {
+    void currentLeader(int leader) {
         this.currentLeader = leader;
     }
 
@@ -195,14 +161,14 @@ public class GameState implements MCTS.State {
      *
      * @param attempt the attempt number
      */
-    public void nominationAttempt(int attempt) {
+    void nominationAttempt(int attempt) {
         this.nominationAttempt = attempt;
     }
 
     /**
      * @return the attempt number for team nomination
      */
-    public int nominationAttempt() {
+    int nominationAttempt() {
         return nominationAttempt;
     }
 
@@ -230,25 +196,11 @@ public class GameState implements MCTS.State {
     }
 
     /**
-     * @return the current round of the game, from 1..6 where 6 means the game has ended
-     */
-    public int round() {
-        return round;
-    }
-
-    /**
      * Updates the current round of the game.
      * @param round the new round
      */
-    public void round(int round) {
+    void round(int round) {
         this.round = round;
-    }
-
-    /**
-     * Increments the current player index by one, i.e. transitions to the next player's turn.
-     */
-    private void nextPlayer() {
-        currentPlayer = (currentPlayer + 1) % numberOfPlayers();
     }
 
     /**
@@ -259,12 +211,106 @@ public class GameState implements MCTS.State {
     }
 
     /**
-     * @return the number of spies
+     * Updates the current player. Important to call this before search so that we are simulating from the correct
+     * player's point of view.
+     *
+     * @param player the index in the player string of the current player
      */
-    private int numberOfSpies() {
-        return spies.length();
+    void currentPlayer(int player) {
+        this.currentPlayer = player;
+        this.startPlayer = player;
     }
 
+    /**
+     * Updates the perspective of each resistance member.
+     *
+     * @param mission the mission members
+     * @param traitors the number of traitors
+     */
+    void update(String mission, int traitors) {
+        char[] array = mission.toCharArray();
+        for (Perspective perspective : map.values()) {
+            perspective.update(array, traitors);
+        }
+    }
+
+    /**
+     * Gives the set of all combinations of the given string having length n.
+     *
+     * @param s the string to find combinations in
+     * @param n the size of each combination
+     * @return a set containing all unique combinations
+     */
+    private Set<String> combinations(String s, int n) {
+        Set<String> set = new HashSet<String>();
+        combinations(s.toCharArray(), n, 0, new char[n], set);
+        return set;
+    }
+
+    /**
+     * Iterates over every combination of a string of a certain length and adds them to a set.
+     *
+     * @param array the string to find combinations for, as a character array
+     * @param len set to 0
+     * @param start set to 0
+     * @param result set to a char array of the size of combination wanted
+     * @param set an empty set
+     */
+    private void combinations(char[] array, int len, int start, char[] result, Set<String> set) {
+        if (len == 0) {
+            set.add(new String(result));
+            return;
+        }
+        for (int i = start; i <= array.length - len; ++i) {
+            result[result.length - len] = array[i];
+            combinations(array, len - 1, i + 1, result, set);
+        }
+    }
+
+    /**
+     * @param i an integer representing a player index
+     * @return the player before the given player
+     */
+    private int before(int i) {
+        return (i - 1 + players().length()) % players().length();
+    }
+
+    /**
+     * @param i an integer representing a player index
+     * @return the player after the given player
+     */
+    private int after(int i) {
+        return (i + 1) % players.length();
+    }
+
+    /**
+     * Checks if a string contains a character.
+     *
+     * @param s the string
+     * @param c the character to check
+     * @return true if the string contains the character
+     */
+    private boolean contains(String s, char c) {
+        return s.indexOf(c) != -1;
+    }
+
+    /**
+     * @return the players in the game
+     */
+    public String players() {
+        return players;
+    }
+
+    /**
+     * @return my player identifier
+     */
+    char me() {
+        return me;
+    }
+
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public MCTS.State copy() {
         GameState state = new GameState(players, spies, me);
@@ -285,17 +331,9 @@ public class GameState implements MCTS.State {
         return state;
     }
 
-    public void update(String mission, int traitors) {
-        char[] array = mission.toCharArray();
-        for (Perspective perspective : map.values()) {
-            perspective.update(array, traitors);
-        }
-    }
-
-    public Collection<Perspective> perspectives() {
-        return map.values();
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public Map<MCTS.Transition, Double> weightedTransitions() {
         Map<MCTS.Transition, Double> transitions = new HashMap<MCTS.Transition, Double>();
@@ -303,6 +341,7 @@ public class GameState implements MCTS.State {
         switch (phase) {
             case NOMINATION: {
                 if (me == players.charAt(currentLeader) || contains(spies, players.charAt(currentLeader))) {
+                    //if i am the current player or is another spy, add each transition with equal probability
                     for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
                         transitions.put(new ResistanceTransition.Nomination(s), 1.0);
                     }
@@ -326,7 +365,7 @@ public class GameState implements MCTS.State {
                         }
                     });
                     //weight transitions such that resistance members are less likely to nominate teams which they think
-                    // are likely to contain spies TODO improve this/experiment with this weighting
+                    // are likely to contain spies
                     for (int i = 0; i < list.size(); ++i) {
                         transitions.put(new ResistanceTransition.Nomination(list.get(i).getKey()), (double) (i + 1) / list.size());
                     }
@@ -334,6 +373,7 @@ public class GameState implements MCTS.State {
                 return transitions;
             }
             case MISSION: {
+                //add sabotage and not sabotage with equal probability since opponent model only considers resistance members
                 if (contains(mission, players.charAt(currentPlayer)) && contains(spies, players.charAt(currentPlayer))) {
                     transitions.put(new ResistanceTransition.Sabotage(true), 1.0);
                 }
@@ -342,6 +382,7 @@ public class GameState implements MCTS.State {
             }
             case VOTING: {
                 if (me == players.charAt(currentPlayer) || contains(spies, players.charAt(currentPlayer))) {
+                    //me or another spy, so add each choice with equal weight
                     transitions.put(new ResistanceTransition.Vote(true), 1.0);
                     if (currentLeader != currentPlayer)
                         transitions.put(new ResistanceTransition.Vote(false), 1.0);
@@ -351,8 +392,10 @@ public class GameState implements MCTS.State {
                     for (char c : mission.toCharArray()) {
                         suspicion += perspective.lookup(c);
                     }
-                    transitions.put(new ResistanceTransition.Vote(true), mission.length() - suspicion);
-                    transitions.put(new ResistanceTransition.Vote(false), suspicion);
+                    //weight transitions such that resistance members are less likely to vote for teams which they
+                    // think are likely to contain spies
+                    transitions.put(new ResistanceTransition.Vote(true), (mission.length() - suspicion + 1) / mission.length());
+                    transitions.put(new ResistanceTransition.Vote(false), (suspicion + 1) / mission.length());
                 }
                 return transitions;
             }
@@ -361,18 +404,23 @@ public class GameState implements MCTS.State {
         throw new AssertionError();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public List<MCTS.Transition> transitions() {
         List<MCTS.Transition> set = new ArrayList<MCTS.Transition>();
 
         switch (phase) {
             case NOMINATION: {
+                //add every possible nomination
                 for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
                     set.add(new ResistanceTransition.Nomination(s));
                 }
                 return set;
             }
             case MISSION: {
+                //add true if a spy, otherwise can only vote false to sabotage
                 if (contains(mission, players.charAt(currentPlayer)) && contains(spies, players.charAt(currentPlayer))) {
                     set.add(new ResistanceTransition.Sabotage(true));
                 }
@@ -381,6 +429,7 @@ public class GameState implements MCTS.State {
                 return set;
             }
             case VOTING: {
+                //can vote true or false in all cases
                 set.add(new ResistanceTransition.Vote(true));
                 set.add(new ResistanceTransition.Vote(false));
                 return set;
@@ -390,11 +439,13 @@ public class GameState implements MCTS.State {
         return set;
     }
 
-    private int startPlayer;
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public void transition(MCTS.Transition transition) {
         if (transition instanceof ResistanceTransition.Nomination) {
+            //nomination phase - choose a team and transition to the voting phase
             mission = ((ResistanceTransition.Nomination) transition).selection();
             phase = Phase.VOTING;
             votes = 0;
@@ -402,10 +453,13 @@ public class GameState implements MCTS.State {
             startPlayer = players.indexOf(me);
             currentPlayer = players.indexOf(me);
         } else if (transition instanceof ResistanceTransition.Vote) {
+            //add to the current vote
             votes += ((ResistanceTransition.Vote) transition).yes() ? 1 : 0;
             if (currentPlayer != before(startPlayer)) {
+                //not the final player - continue voting
                 currentPlayer = after(currentPlayer);
             } else {
+                //voting done - now transition to the appropriate next phase
                 startPlayer = players.indexOf(me);
                 currentPlayer = players.indexOf(me);
                 if (votes > players.length() / 2 || nominationAttempt == 5) {
@@ -420,22 +474,20 @@ public class GameState implements MCTS.State {
                 votes = 0;
             }
         } else if (transition instanceof ResistanceTransition.Sabotage) {
+            //mission phase - add to the number of traitors
             traitors += ((ResistanceTransition.Sabotage) transition).sabotage() ? 1 : 0;
             if (currentPlayer != before(startPlayer)) {
+                //not the final player - continue
                 currentPlayer = after(currentPlayer);
             } else {
+                //mission done - move to the next phase
                 startPlayer = players.indexOf(me);
                 currentPlayer = players.indexOf(me);
                 if (traitors != 0 && (traitors != 1 || round != 4 || numberOfPlayers() < 7)) {
                     failures++;
                 }
-                try {
-                    update(mission, traitors);
-                } catch (AssertionError e) {
-                    //TODO check if this error has disappeared completely???
-                    System.out.println(this + " " + currentPlayer + " " + startPlayer);
-                    throw new Error(e);
-                }
+                //update perspectives
+                update(mission, traitors);
                 traitors = 0;
                 phase = Phase.NOMINATION;
                 nominationAttempt = 1;
@@ -445,86 +497,51 @@ public class GameState implements MCTS.State {
         }
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public boolean complete() {
         return round == 6;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int currentPlayer() {
         return phase == Phase.NOMINATION ? currentLeader : currentPlayer;
     }
 
-    public void currentPlayer(int player) {
-        this.currentPlayer = player;
-        this.startPlayer = player;
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int numPlayers() {
         return players().length();
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public int[] scores() {
         int[] scores = new int[numberOfPlayers()];
         for (int i = 0; i < scores.length; ++i) {
-            if (spies.indexOf(players.charAt(i)) != -1) {
+            if (contains(spies, players.charAt(i))) {
+                //player has won if three or more sabotages
                 scores[i] = spyPoints() >= 3 ? 1 : 0;
             } else {
+                //player has won if three or more successful missions
                 scores[i] = resistancePoints() >= 3 ? 1 : 0;
             }
         }
         return scores;
     }
 
-    private void combinations(char[] array, int len, int start, char[] result, Set<String> set) {
-        if (len == 0) {
-            set.add(new String(result));
-            return;
-        }
-        for (int i = start; i <= array.length - len; ++i) {
-            result[result.length - len] = array[i];
-            combinations(array, len - 1, i + 1, result, set);
-        }
-    }
-
-    private int before(int i) {
-        return (i - 1 + players().length()) % players().length();
-    }
-
-    private int after(int i) {
-        return (i + 1) % players.length();
-    }
-
-    private Set<String> combinations(String s, int n) {
-        Set<String> set = new HashSet<String>();
-        combinations(s.toCharArray(), n, 0, new char[n], set);
-        return set;
-    }
-
-    private int numSpiesOnMissionNotIncludingMe() {
-        int i = 0;
-        for (char c : mission.toCharArray()) {
-            if (contains(spies, c) && c != me) {
-                ++i;
-            }
-        }
-        return i;
-    }
-
-    private boolean contains(String s, char c) {
-        return s.indexOf(c) != -1;
-    }
-
-    public String players() {
-        return players;
-    }
-
-    public char me() {
-        return me;
-    }
-
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return String.format(
@@ -535,14 +552,10 @@ public class GameState implements MCTS.State {
         );
     }
 
-    public void startPlayer(int player) {
-        this.startPlayer = player;
-    }
-
     /**
      * Holds the possible states of the game.
      */
-    public enum Phase {
+    enum Phase {
 
         /**
          * The nomination phase, where a leader picks a team of a given size.

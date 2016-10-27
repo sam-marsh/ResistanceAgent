@@ -49,7 +49,7 @@ public class MCTS {
     private Node root;
 
     /**
-     * Creates a new Monte Carlo Search tree from the given state.
+     * Creates a new Monte Carlo SearchSpyAgent tree from the given state.
      *
      * @param state the state to start searching from
      */

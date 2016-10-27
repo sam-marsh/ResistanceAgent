@@ -1,32 +1,27 @@
 package s21324325;
 
 import cits3001_2016s2.Agent;
+import s21329882.BayesResistanceAgent;
 
 /**
- *
+ * The Bayesian inference agent.
  */
 public class SearchAgent implements Agent {
 
     /**
-     * We only have one second to make our move... This is the amount of time we sleep the game thread
-     * in order to search for as long as possible.
-     */
-    private static final int DELAY_TIME = 800;
-
-    /**
-     * Whether the agent has been started yet.
+     * Whether the agent has been set up.
      */
     private boolean initialised;
 
-    /**
-     * The game state from the perspective of us (a spy - i.e. perfect information)
-     */
-    private GameState state;
+    private Agent delegate;
 
     /**
-     * The searcher, used to pick our moves.
+     * Creates a new Bayesian agent.
      */
-    private MCTS searcher;
+    public SearchAgent() {
+        initialised = false;
+        delegate = null;
+    }
 
     /**
      * {@inheritDoc}
@@ -34,23 +29,10 @@ public class SearchAgent implements Agent {
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
         if (!initialised) {
-            state = new GameState(players, spies, name.charAt(0));
-            state.phase(GameState.Phase.NOMINATION);
-            searcher = new MCTS(state);
+            delegate = (spies.contains("?") ? new BayesResistanceAgent() : new SearchSpyAgent());
             initialised = true;
         }
-        //update the state
-        state.round(mission);
-        state.failures(failures);
-        state.nominationAttempt(1);
-        state.traitors(0);
-        state.phase(GameState.Phase.NOMINATION);
-
-        //shut down the searcher so that the program can end (otherwise has random thread waiting so program doesn't
-        // terminate)
-        if (state.complete() && searcher != null) {
-            searcher.shutdown();
-        }
+        delegate.get_status(name, players, spies, mission, failures);
     }
 
     /**
@@ -58,24 +40,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public String do_Nominate(int number) {
-        //update game state
-        state.phase(GameState.Phase.NOMINATION);
-        state.currentPlayer(state.players().indexOf(state.me()));
-        state.currentLeader(state.players().indexOf(state.me()));
-
-        //start the search
-        searcher.state(state);
-        searcher.search();
-
-        //delay as long as possible
-        sleep(DELAY_TIME);
-
-        //get the best move
-        MCTS.Transition transition = searcher.transition();
-
-        System.out.println("MOVE: " + transition);
-        //perform the move
-        return ((ResistanceTransition.Nomination) transition).selection();
+        return delegate.do_Nominate(number);
     }
 
     /**
@@ -83,14 +48,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_ProposedMission(String leader, String mission) {
-        //update game state
-        state.currentLeader(state.players().indexOf(leader));
-        state.mission(mission);
-        state.phase(GameState.Phase.VOTING);
-        state.currentPlayer(state.players().indexOf(state.me()));
-        state.startPlayer(state.players().indexOf(state.me()));
-
-        state.nominationAttempt(state.nominationAttempt() + 1);
+        delegate.get_ProposedMission(leader, mission);
     }
 
     /**
@@ -98,18 +56,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public boolean do_Vote() {
-        searcher.state(state);
-        searcher.search();
-
-        //delay as long as possible
-        sleep(DELAY_TIME);
-
-        //get the best move
-        MCTS.Transition transition = searcher.transition();
-        System.out.println("MOVE: " + transition);
-
-        //perform the move
-        return ((ResistanceTransition.Vote) transition).yes();
+        return delegate.do_Vote();
     }
 
     /**
@@ -117,26 +64,15 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_Votes(String yays) {
-        //update state
-        state.nominationAttempt(state.nominationAttempt() + 1);
-        state.phase(GameState.Phase.MISSION);
+        delegate.get_Votes(yays);
     }
-
-    private String lastMission;
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void get_Mission(String mission) {
-        state.nominationAttempt(1);
-        lastMission = mission;
-        //update state
-        state.mission(mission);
-        state.phase(GameState.Phase.MISSION);
-        state.currentPlayer(state.players().indexOf(state.me()));
-        state.startPlayer(state.players().indexOf(state.me()));
-        state.traitors(0);
+        delegate.get_Mission(mission);
     }
 
     /**
@@ -144,19 +80,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public boolean do_Betray() {
-        searcher.state(state);
-        //start the search
-        searcher.search();
-
-        //delay as long as possible
-        sleep(DELAY_TIME);
-
-        //get the best move
-        MCTS.Transition transition = searcher.transition();
-        System.out.println("MOVE: " + transition);
-
-        //perform the move
-        return ((ResistanceTransition.Sabotage) transition).sabotage();
+        return delegate.do_Betray();
     }
 
     /**
@@ -164,9 +88,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_Traitors(int traitors) {
-        //update state
-        state.traitors(traitors);
-        state.update(lastMission, traitors);
+        delegate.get_Traitors(traitors);
     }
 
     /**
@@ -174,8 +96,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public String do_Accuse() {
-        //don't bother
-        return "";
+        return delegate.do_Accuse();
     }
 
     /**
@@ -183,18 +104,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_Accusation(String accuser, String accused) {
-        //ignore
-    }
-
-    /**
-     * Sleeps the current thread, ignores exceptions from interrupts.
-     *
-     * @param ms the time to sleep in milliseconds
-     */
-    private void sleep(int ms) {
-        try {
-            Thread.sleep(ms);
-        } catch (InterruptedException ignore) {}
+        delegate.get_Accusation(accuser, accused);
     }
 
 }
