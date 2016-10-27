@@ -1,4 +1,4 @@
-package s21324325.mcts;
+package s21324325;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -68,7 +68,8 @@ public class MCTS {
      */
     public void state(State state) throws IllegalStateException {
         if (searching || (future != null && !future.isDone())) {
-            transition();
+
+            future.cancel(true);
         }
         this.state = state.copy();
     }

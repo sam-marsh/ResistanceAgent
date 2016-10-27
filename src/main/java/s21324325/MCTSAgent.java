@@ -1,27 +1,23 @@
-package s21324325.bayes;
+package s21324325;
 
 import cits3001_2016s2.Agent;
 
 /**
  * The Bayesian inference agent.
  */
-public class BayesAgent implements Agent {
+public class MCTSAgent implements Agent {
 
     /**
      * Whether the agent has been set up.
      */
     private boolean initialised;
 
-    /**
-     * This holds either a {@link BayesSpyAgent} or a {@link BayesResistanceAgent} depending
-     * on which team we get allocated to. All callbacks are delegated to this object.
-     */
     private Agent delegate;
 
     /**
      * Creates a new Bayesian agent.
      */
-    public BayesAgent() {
+    public MCTSAgent() {
         initialised = false;
         delegate = null;
     }
@@ -32,7 +28,7 @@ public class BayesAgent implements Agent {
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
         if (!initialised) {
-            delegate = (spies.contains("?") ? new BayesResistanceAgent() : new BayesSpyAgent());
+            delegate = (spies.contains("?") ? new SearchAgent() : new LogicalAgent());
             initialised = true;
         }
         delegate.get_status(name, players, spies, mission, failures);

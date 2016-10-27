@@ -1,5 +1,7 @@
 package cits3001_2016s2;
 
+import s21329882.BayesAgent;
+
 import java.util.*;
 import java.io.*;
 /**
@@ -35,7 +37,7 @@ public class Game{
 
   /**
    * Creates an empty game
-   * @param logFile path to the log file
+   * @param fName path to the log file
    * */
   public Game(String fName){
     logFile = new File(fName);
@@ -406,7 +408,10 @@ public class Game{
     try{
       File f = new File("Results.html");
       FileWriter fw = new FileWriter(f);
-      Competitor[] contenders = {new Competitor(new RandomAgent(),"Randy","Tim")};
+      Competitor[] contenders = {
+              new Competitor(new BayesAgent(), "Bayes", "Sam"),
+              //new Competitor(new MCTSAgent(), "MCTS", "Sam")
+      };
       fw.write(tournament(contenders, 10));
       fw.close();
     }

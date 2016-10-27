@@ -1,6 +1,4 @@
-package s21324325;
-
-import core.Game;
+package s21329882;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -14,7 +12,6 @@ import java.util.*;
 public class Player {
 
     private final char id;
-    private final Probability suspect;
     private final Map<Player, Variable> friends;
     private final Variable supportSuspect;
     private final Variable suspiciousActions;
@@ -24,7 +21,6 @@ public class Player {
     public Player(GameState data, char id, double initialSuspicion) {
         this.id = id;
         this.friends = new HashMap<Player, Variable>();
-        this.suspect = new Probability((double) data.numberOfSpies() / data.numberOfPlayers());
         this.supportSuspect = new Variable((double) data.numberOfSpies() / data.numberOfPlayers(), 1);
         this.suspiciousActions = new Variable(0, 0);
         this.possibleGoodActions = new Variable(0, 0);
@@ -38,6 +34,18 @@ public class Player {
             friends.put(player, friendship);
         }
         return friendship;
+    }
+
+    public Variable getSupportSuspect() {
+        return supportSuspect;
+    }
+
+    public Variable suspiciousActions() {
+        return suspiciousActions;
+    }
+
+    public Variable getPossibleGoodActions() {
+        return possibleGoodActions;
     }
 
     public char id() {
@@ -69,13 +77,14 @@ public class Player {
     }
 
     public double spyness() {
-/*
-        double value = 0.75 + 0.25 * supportSuspect.estimate();
-        value *= suspect.estimate();
-        value *= 0.4 + 0.6 * suspiciousActions.estimate();
-        value *= 1 - 0.1 * possibleGoodActions.estimate();
-*/
-        return bayesSuspicion;
+        if (bayesSuspicion == 0) return 0;
+        if (bayesSuspicion == 1) return 1;
+
+        double value = bayesSuspicion();
+        value *= (0.75 + 0.25 * supportSuspect.estimate());
+        value *= (0.4 + 0.6 * suspiciousActions.estimate());
+        value *= (1 - 0.1 * possibleGoodActions.estimate());
+        return value;
     }
 
     public String toString() {

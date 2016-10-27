@@ -1,4 +1,4 @@
-package s21324325.mcts;
+package s21324325;
 
 import cits3001_2016s2.Agent;
 
@@ -33,8 +33,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
-        //TODO remove this and actually implement a resistance part instead of exiting the program when resistance
-        if (spies.contains("?")) System.exit(0);
+
         if (!initialised) {
             state = new GameState(players, spies, name.charAt(0));
             state.phase(GameState.Phase.NOMINATION);
@@ -92,8 +91,7 @@ public class SearchAgent implements Agent {
         state.currentPlayer(state.players().indexOf(state.me()));
         state.startPlayer(state.players().indexOf(state.me()));
 
-        ++attempt;
-        //start the search
+        state.nominationAttempt(state.nominationAttempt() + 1);
     }
 
     /**
@@ -126,14 +124,13 @@ public class SearchAgent implements Agent {
     }
 
     private String lastMission;
-    private int attempt = 1;
 
     /**
      * {@inheritDoc}
      */
     @Override
     public void get_Mission(String mission) {
-        attempt = 1;
+        state.nominationAttempt(1);
         lastMission = mission;
         //update state
         state.mission(mission);

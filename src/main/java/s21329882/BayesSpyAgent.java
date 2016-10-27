@@ -1,14 +1,8 @@
-package s21324325.bayes;
+package s21329882;
 
-import s21324325.GameState;
-import s21324325.Player;
-import s21324325.ResistancePerspective;
 import cits3001_2016s2.Agent;
 
 import java.util.*;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.Future;
 
 /**
  * This is the spy agent. It uses Bayesian inference to decide on transitions based on which options will minimise the
@@ -33,10 +27,6 @@ public class BayesSpyAgent implements Agent {
     //used to keep track of who the leader of the current mission is, since it isn't passed to the get method
     private String lastNominatedLeader;
     private String lastNominatedMission;
-
-    //for parallel computation of spy probabilities
-    private ExecutorService executor;
-    private Set<Future<?>> futures;
 
     //my identifier character
     private char me;
@@ -74,20 +64,12 @@ public class BayesSpyAgent implements Agent {
                 }
             }
 
-            //one thread for each resistance member
-            executor = Executors.newFixedThreadPool(perspectives.size());
-            futures = new HashSet<Future<?>>();
             initialised = true;
         }
 
         state.missionNumber(mission);
         state.failures(failures);
 
-        if (state.gameOver()) {
-            waitForCalculation();
-            //force shutdown executor - shouldn't be necessary but just in case
-            executor.shutdownNow();
-        }
     }
 
     /**
@@ -95,9 +77,6 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public String do_Nominate(int number) {
-        //wait for executor to finish computation
-        waitForCalculation();
-
         //find incorrectness for each resistance member's prediction based on each team containing me, sort by maximum
         // incorrectness, and return the one that makes the resistance members the most wrong in their inference
         Map<String, Double> map = new HashMap<String, Double>();
@@ -131,8 +110,6 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public boolean do_Vote() {
-        waitForCalculation();
-
         //always accept my own missions
         if (state.proposedMission().leader() == me)
             return true;
@@ -169,8 +146,6 @@ public class BayesSpyAgent implements Agent {
         if (shouldSabotageByExpertRules()) {
             return true;
         }
-
-        waitForCalculation();
 
         //now - simulate that every spy on the team will sabotage (worst case in terms of suspicion)
         int n = numberOfSpiesOnMission(state.mission());
@@ -248,12 +223,7 @@ public class BayesSpyAgent implements Agent {
 
         //start updating all resistance perspectives in parallel
         for (final ResistancePerspective perspective : perspectives) {
-            futures.add(executor.submit(new Runnable() {
-                @Override
-                public void run() {
-                    perspective.updateSuspicion();
-                }
-            }));
+            perspective.updateSuspicion();
         }
     }
 
@@ -271,20 +241,6 @@ public class BayesSpyAgent implements Agent {
     @Override
     public void get_Accusation(String accuser, String accused) {}
 
-    /**
-     * Utility method to wait for all executing calculations (generally of suspicion values using Bayes' rule) to
-     * finish.
-     */
-    private void waitForCalculation() {
-        Iterator<Future<?>> iterator = futures.iterator();
-        while (iterator.hasNext()) {
-            Future<?> future = iterator.next();
-            try {
-                future.get();
-            } catch (Exception ignore) {}
-            iterator.remove();
-        }
-    }
 
     /**
      * The expert rules for sabotage. Currently sabotages if
@@ -385,15 +341,6 @@ public class BayesSpyAgent implements Agent {
         //don't use the player at the start index in the team and recurse
         used[start] = false;
         computeUncertainty(select, start + 1, curr, used, map);
-    }
-
-    /**
-     * Method for debugging/testing.
-     *
-     * @return the game state
-     */
-    public GameState state() {
-        return state;
     }
 
 }

@@ -1,4 +1,4 @@
-package s21324325.mcts;
+package s21324325;
 
 /**
  * the types of moves possible in the resistance game
