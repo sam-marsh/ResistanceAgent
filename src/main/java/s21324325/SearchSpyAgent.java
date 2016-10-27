@@ -6,7 +6,7 @@ import s21329882.BayesResistanceAgent;
 /**
  * The Bayesian inference agent.
  */
-public class MCTSAgent implements Agent {
+public class SearchSpyAgent implements Agent {
 
     /**
      * Whether the agent has been set up.
@@ -18,7 +18,7 @@ public class MCTSAgent implements Agent {
     /**
      * Creates a new Bayesian agent.
      */
-    public MCTSAgent() {
+    public SearchSpyAgent() {
         initialised = false;
         delegate = null;
     }
