@@ -1,7 +1,5 @@
 package agent.mcts;
 
-import agent.mcts.impl.GameState;
-
 import java.util.*;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
@@ -15,8 +13,9 @@ public class MCTS {
     /**
      * The selection expand for the root child. For The Resistance, {@link SelectionPolicy#MAX_CHILD} works much
      * better than {@link SelectionPolicy#ROBUST_CHILD} (from experimentation).
+     * TODO check this after integrated opponent model
      */
-    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
+    private static final SelectionPolicy POLICY = SelectionPolicy.MAX_CHILD;
 
     /**
      * The random number generator used for random simulations, etc.
@@ -30,6 +29,7 @@ public class MCTS {
 
     /**
      * Whether a search is in progress. Volatile since it needs to be accessed from two threads.
+     * TODO check whether anything else needs to be done apart from making this volatile (???)
      */
     private volatile boolean searching;
 

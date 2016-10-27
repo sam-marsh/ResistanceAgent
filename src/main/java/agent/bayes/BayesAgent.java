@@ -1,6 +1,6 @@
 package agent.bayes;
 
-import core.Agent;
+import cits3001_2016s2.Agent;
 
 /**
  * The Bayesian inference agent.

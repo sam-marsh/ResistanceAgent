@@ -1,7 +1,6 @@
-package agent.mcts.impl;
+package agent.mcts;
 
-import agent.mcts.MCTS;
-import core.Agent;
+import cits3001_2016s2.Agent;
 
 /**
  *
@@ -34,7 +33,7 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
-        //TODO remove this
+        //TODO remove this and actually implement a resistance part instead of exiting the program when resistance
         if (spies.contains("?")) System.exit(0);
         if (!initialised) {
             state = new GameState(players, spies, name.charAt(0));
@@ -142,13 +141,6 @@ public class SearchAgent implements Agent {
         state.currentPlayer(state.players().indexOf(state.me()));
         state.startPlayer(state.players().indexOf(state.me()));
         state.traitors(0);
-
-        //only search if i am on the mission, otherwise i won't be asked to sabotage
-        if (mission.indexOf(state.me()) != -1) {
-            //start the search
-            searcher.state(state);
-            searcher.search();
-        }
     }
 
     /**
@@ -156,6 +148,10 @@ public class SearchAgent implements Agent {
      */
     @Override
     public boolean do_Betray() {
+        searcher.state(state);
+        //start the search
+        searcher.search();
+
         //delay as long as possible
         sleep(DELAY_TIME);
 

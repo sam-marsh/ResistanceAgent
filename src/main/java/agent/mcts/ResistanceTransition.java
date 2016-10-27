@@ -1,10 +1,7 @@
-package agent.mcts.impl;
-
-import agent.mcts.MCTS;
+package agent.mcts;
 
 /**
- * Author: Sam Marsh
- * Date: 18/10/2016
+ * the types of moves possible in the resistance game
  */
 public abstract class ResistanceTransition implements MCTS.Transition {
 

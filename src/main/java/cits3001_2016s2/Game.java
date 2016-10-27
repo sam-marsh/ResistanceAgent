@@ -1,13 +1,7 @@
-package core;
+package cits3001_2016s2;
 
-import agent.bayes.BayesAgent;
-import agent.mcts.impl.LogicalAgent;
-import agent.mcts.impl.SearchAgent;
-
-import java.io.File;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
+import java.io.*;
 /**
  * A Class to represent a single game of resistance
  * @author Tim French
@@ -33,7 +27,7 @@ public class Game{
 
   /**
    * Creates an empty game.
-   * core.Game log printed to stdout
+   * Game log printed to stdout
    * */
   public Game(){
     init();
@@ -41,7 +35,7 @@ public class Game{
 
   /**
    * Creates an empty game
-   * @param fName path to the log file
+   * @param logFile path to the log file
    * */
   public Game(String fName){
     logFile = new File(fName);
@@ -68,14 +62,12 @@ public class Game{
   private void log(String msg){
     if(logging){
       try{
-        FileWriter log = new FileWriter(logFile, true);
+        FileWriter log = new FileWriter(logFile);
         log.write(msg);
         log.close();
       }catch(IOException e){e.printStackTrace();}
     }
-    else{
-      System.out.println(msg);
-    }
+    System.out.println(msg);
   }  
 
 
@@ -83,13 +75,14 @@ public class Game{
    * Adds a player to a game. Once a player is added they cannot be removed
    * @param a the agent to be added
    * */
-  public void addPlayer(Agent a){
+  public char addPlayer(Agent a){
     if(numPlayers > 9) throw new RuntimeException("Too many players");
     else if(started) throw new RuntimeException("Game already underway");
     else{
       Character name = (char)(65+numPlayers++);
       players.put(name, a);
       log("Player "+name+" added.");
+      return name;
     }
   }
 
@@ -110,6 +103,12 @@ public class Game{
       }
       for(Character c: players.keySet())playerString+=c;
       for(Character c: spies){spyString+=c; resString+='?';}
+      char[] pArr = playerString.toCharArray();
+      Arrays.sort(pArr);
+      playerString = new String(pArr);
+      char[] sArr = spyString.toCharArray();
+      Arrays.sort(sArr);
+      spyString = new String(sArr);
       statusUpdate(1,0);
       started= true;
       log("Game set up. Spys allocated");
@@ -117,7 +116,7 @@ public class Game{
   }
 
   /** 
-   * Starts a timer for core.Agent method calls
+   * Starts a timer for Agent method calls
    * */
   private void stopwatchOn(){
     stopwatch = System.currentTimeMillis();
@@ -232,13 +231,12 @@ public class Game{
     return traitors;  
   }
 
-  Set<Character> winners = new HashSet<Character>();
-
   /**
    * Conducts the game play, consisting of 5 rounds, each with a series of nominations and votes, and the eventual mission.
    * It logs the result of the game at the end.
+   * @return the number of failed missions
    * */
-  public void play(){
+  public int play(){
     int fails = 0;
     int leader = (rand.nextInt(numPlayers));
     for(int round = 1; round<=5; round++){
@@ -270,115 +268,157 @@ public class Game{
         }
       }  
     }
-    if (fails > 2) {
-        spiesWon = true;
-        for (char c : spies) {
-            winners.add(c);
-        }
-    } else {
-        winners.addAll(players.keySet());
-        for (char c : spies)
-            winners.remove(c);
+    if(fails>2) log("Government Wins! "+fails+" missions failed.");
+    else log("Resistance Wins! "+fails+" missions failed.");
+    log("The Government Spies were "+spyString+".");
+    return fails;
+  }
+
+
+
+  static class Competitor implements Comparable{
+    private Class agent;
+    private String name;
+    private String authors;
+    public int spyWins;
+    public int spyPlays;
+    public int resWins;
+    public int resPlays;
+
+    public Competitor(Agent agent, String name, String authors){
+      this.agent = agent.getClass();
+      this.name = name;
+      this.authors = authors;
+    }
+
+    public int compareTo(Object o){
+      try{
+        Competitor c = (Competitor) o;
+        return (int)(1000*(this.winRate()-c.winRate()));
+      }
+      catch(Exception e){return 1;}
+    }
+
+    public Agent getAgent(){
+     try{return (Agent)agent.newInstance();}
+     catch(Exception e){return null;}
+    }
+
+    public String getName(){return name;}
+
+    public String getAuthors(){return authors;}
+
+    public void spyWin(){
+      spyWins++;spyPlays++;
+    }
+
+    public void spyLoss(){
+      spyPlays++;
+    }
+
+    public void resWin(){
+      resWins++;resPlays++;
+    }
+
+    public void resLoss(){
+      resPlays++;
+    }
+  
+    public double spyWinRate(){
+      return (1.0*spyWins)/spyPlays;
+    }
+
+    public double resWinRate(){
+      return (1.0*resWins)/resPlays;
+    }
+
+    public double winRate(){
+      return (1.0*(spyWins+resWins))/(spyPlays+resPlays);
+    }
+
+    public String toString(){
+      return "<tr><td>"+name+
+        "</td><td>"+authors+
+        "</td><td>"+spyWins+
+        "</td><td>"+spyPlays+
+        "</td><td>"+resWins+
+        "</td><td>"+resPlays+
+        "</td><td>"+winRate()+
+        "</td></tr>\n";
     }
   }
 
-  boolean spiesWon;
-
-  public Set<Character> winners() {
-      return winners;
+  public static String tournament(Competitor[] agents, int rounds){
+    Random tRand = new Random();
+    for(int round = 0; round<rounds; round++){
+      Game g = new Game("Round"+round+".txt");
+      int playerNum = 5+tRand.nextInt(6);
+      for(int i = 0; i<playerNum; i++){
+        int index = tRand.nextInt(agents.length);
+        g.stopwatchOn();char name = g.addPlayer(agents[index].getAgent());g.stopwatchOff(1000,name);
+        g.log("Player "+ agents[index].getName()+" from "+agents[index].getAuthors()+" is "+name);
+      }
+      g.setup();
+      int fails = g.play();
+      int i = 0;
+      char[] spies = g.spyString.toCharArray();
+      for(Character c: g.playerString.toCharArray()){
+        for(Competitor cc: agents){
+          if(cc.agent.isInstance(g.players.get(c))){
+            if(i<spies.length && c==spies[i]){
+              if (fails>2) cc.spyWin();
+              else cc.spyLoss();
+              i++;
+            }
+            else{
+              if(fails>2) cc.resLoss();
+              else cc.resWin();
+            }
+          g.log(cc.toString());
+          }  
+        }
+      }    
+    }
+    Arrays.sort(agents);
+    String ret = 
+    "<html><body><table><tr><th>Name</th><th>Author</th><th>Spy Wins</th><th>Spy Plays</th><th>Res Wins</th><th>Res Plays</th><th>Win Rate</th></tr>";
+    for(int i = 0; i< agents.length; i++)
+      ret+= agents[i];
+    return ret+"</table></body></html>";  
   }
+
 
   /**
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
-      Game g = new Game();
-      g.addPlayer(new SearchAgent());
-      g.addPlayer(new BayesAgent());
-      g.addPlayer(new BayesAgent());
-      g.addPlayer(new BayesAgent());
-      g.addPlayer(new BayesAgent());
-      g.setup();
-      g.play();
-      System.out.println(g.winners + " win!");
-      /*
-      Map<Character, Data> map = new HashMap<Character, Data>();
-      for (char c = 'A'; c <= 'F'; ++c) {
-          Data data = new Data();
-          data.player = c;
-          map.put(c, data);
-      }
-      int i = 0;
-      while (i < 200) {
-          if (i % 5 == 0) System.out.println(100 * (double) i / 200 + "%");
-          Game g = new Game("out.txt");
-          g.addPlayer(new LogicalAgent());
-          g.addPlayer(new LogicalAgent());
-          g.addPlayer(new LogicalAgent());
-          g.addPlayer(new BayesAgent());
-          g.addPlayer(new BayesAgent());
-          g.addPlayer(new BayesAgent());
-          g.addPlayer(new RandomAgent());
-          g.setup();
-          g.play();
-          for (Character c : g.winners) {
-              if (c == 'G') continue;
-              if (g.spiesWon) {
-                  map.get(c).swins += 1;
-                  map.get(c).splays += 1;
-              } else {
-                  map.get(c).rwins += 1;
-                  map.get(c).rplays += 1;
-              }
-          }
-          for (Character c : Arrays.asList('A', 'B', 'C', 'D', 'E', 'F')) {
-              if (!g.winners.contains(c)) {
-                  if (g.spiesWon) {
-                      map.get(c).rplays += 1;
-                  } else {
-                      map.get(c).splays += 1;
-                  }
-              }
-          }
-          ++i;
-      }
-      Data dl = new Data();
-      for (char c = 'A'; c <= 'C'; ++c) {
-          Data tmp = map.get(c);
-          dl.rwins += tmp.rwins;
-          dl.swins += tmp.swins;
-          dl.rplays += tmp.rplays;
-          dl.splays += tmp.splays;
-      }
-      Data db = new Data();
-      for (char c = 'D'; c <= 'F'; ++c) {
-          Data tmp = map.get(c);
-          db.rwins += tmp.rwins;
-          db.swins += tmp.swins;
-          db.rplays += tmp.rplays;
-          db.splays += tmp.splays;
-      }
-      System.out.println("LogicalAgent: " + dl);
-      System.out.println("BayesAgent: " + db);
-      */
-  }
-
-  private static class Data {
-
-      char player;
-      int rplays;
-      int rwins;
-      int splays;
-      int swins;
-
-      @Override
-      public String toString() {
-          return String.format("{r=%.2f%%,s=%.2f%%}", (double) 100* rwins/ rplays, (double) 100*swins / splays);
-      }
+    /* Run a single game
+    Game g = new Game();
+    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'A');
+    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'C');
+    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'D');
+    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'E');
+    g.setup();
+    g.play();
+    */
+    /*Run a tournament*/
+    try{
+      File f = new File("Results.html");
+      FileWriter fw = new FileWriter(f);
+      Competitor[] contenders = {new Competitor(new RandomAgent(),"Randy","Tim")};
+      fw.write(tournament(contenders, 10));
+      fw.close();
+    }
+    catch(IOException e){System.out.println("IO fail");}
   }
 
 }  
-        
+
+
+
+
+
         
         
 

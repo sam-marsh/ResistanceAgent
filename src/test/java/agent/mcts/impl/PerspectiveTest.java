@@ -1,8 +1,7 @@
 package agent.mcts.impl;
 
+import agent.mcts.Perspective;
 import org.junit.Test;
-
-import static org.junit.Assert.*;
 
 /**
  * Author: Sam Marsh

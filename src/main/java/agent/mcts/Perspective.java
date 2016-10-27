@@ -1,12 +1,9 @@
-package agent.mcts.impl;
-
-import agent.Player;
+package agent.mcts;
 
 import java.util.*;
 
 /**
- * Author: Sam Marsh
- * Date: 21/10/2016
+ * Holds bayes suspicions for all other players from the perspective of a resistance member
  */
 public class Perspective {
 

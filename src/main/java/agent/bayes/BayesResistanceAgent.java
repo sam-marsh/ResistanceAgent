@@ -1,7 +1,7 @@
 package agent.bayes;
 
 import agent.*;
-import core.Agent;
+import cits3001_2016s2.Agent;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
@@ -38,9 +38,6 @@ public class BayesResistanceAgent implements Agent {
             waitForCalculation();
             executor.shutdownNow();
         }
-
-        waitForCalculation();
-        System.out.println(perspective);
     }
 
     @Override
@@ -83,7 +80,6 @@ public class BayesResistanceAgent implements Agent {
 
     @Override
     public void get_ProposedMission(String leader, String mission) {
-        waitForCalculation();
         lastNominatedLeader = leader;
         lastNominatedMission = mission;
         state.proposedMission(new GameState.Mission(leader, mission));
@@ -118,7 +114,6 @@ public class BayesResistanceAgent implements Agent {
 
     @Override
     public void get_Votes(String yays) {
-        waitForCalculation();
         GameState.Mission proposed = state.proposedMission();
         Set<Character> in = new HashSet<Character>(proposed.team());
         Set<Character> out = new HashSet<Character>(state.numberOfPlayers());
@@ -152,7 +147,6 @@ public class BayesResistanceAgent implements Agent {
 
     @Override
     public void get_Mission(String mission) {
-        waitForCalculation();
         if (mission.equals(lastNominatedMission)) {
             state.mission(new GameState.Mission(lastNominatedLeader, lastNominatedMission));
         } else {
@@ -167,7 +161,6 @@ public class BayesResistanceAgent implements Agent {
 
     @Override
     public void get_Traitors(int traitors) {
-        waitForCalculation();
         state.mission().done(traitors);
 
         task = executor.submit(new Runnable() {
@@ -241,10 +234,6 @@ public class BayesResistanceAgent implements Agent {
 
     private boolean calculating() {
         return task != null && !task.isDone();
-    }
-
-    public GameState state() {
-        return state;
     }
 
 }

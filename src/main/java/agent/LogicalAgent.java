@@ -1,9 +1,11 @@
-package agent.mcts.impl;
+package agent;
 
-import agent.util.PermutationIterator;
-import core.Agent;
+import cits3001_2016s2.Agent;
 
 import java.util.*;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 
 /**
  * Author: Sam Marsh
@@ -17,10 +19,12 @@ public class LogicalAgent implements Agent {
     private char me;
     private Map<Integer, Character> indices;
     private Map<Character, Integer> reverse;
-    private Map<Boolean[], Double> permutations;
+    private Map<boolean[], Double> permutations;
     private int round;
     private int failures;
     private int tries;
+    private ExecutorService service;
+    private Set<Future<?>> tasks;
 
     public LogicalAgent() {
         initialised = false;
@@ -45,18 +49,23 @@ public class LogicalAgent implements Agent {
                 }
             }
 
-            this.permutations = new HashMap<Boolean[], Double>();
-            Boolean[] config = new Boolean[players.length() - 1];
-            for (int j = 0; j < spies.length(); ++j) {
-                config[j] = true;
-            }
-            for (int j = spies.length(); j < this.players.length - 1; ++j) {
-                config[j] = false;
-            }
-            Iterator<Boolean[]> iterator = new PermutationIterator<Boolean>(Arrays.asList(config));
-            while (iterator.hasNext()) {
-                permutations.put(iterator.next(), 0.0);
-            }
+            service = Executors.newFixedThreadPool(1);
+            tasks = new HashSet<Future<?>>();
+
+            run(new Runnable() {
+                @Override
+                public void run() {
+                    LogicalAgent.this.permutations = new HashMap<boolean[], Double>();
+                    boolean[] config = new boolean[LogicalAgent.this.players.length - 1];
+                    for (int j = 0; j < LogicalAgent.this.spies.length(); ++j) {
+                        config[j] = true;
+                    }
+                    for (int j = LogicalAgent.this.spies.length(); j < LogicalAgent.this.players.length - 1; ++j) {
+                        config[j] = false;
+                    }
+                    permute(config, 0);
+                }
+            });
 
             tries = 0;
 
@@ -66,9 +75,33 @@ public class LogicalAgent implements Agent {
         this.round = mission;
         this.failures = failures;
 
+        if (round == 6) {
+            service.shutdownNow();
+        }
     }
 
-    private double oracleSelection(char leader, String mission, Boolean config[]) {
+    void permute(boolean[] array, int k){
+        for(int i = k; i < array.length; i++){
+            swap(array, i, k);
+            permute(array, k + 1);
+            swap(array, k, i);
+        }
+        if (k == array.length - 1){
+            permutations.put(array, 0.0);
+        }
+    }
+
+    private static void swap(boolean[] array, int i, int j) {
+        boolean tmp = array[i];
+        array[i] = array[j];
+        array[j] = tmp;
+    }
+
+    private void run(Runnable runnable) {
+        tasks.add(service.submit(runnable));
+    }
+
+    private double oracleSelection(char leader, String mission, boolean[] config) {
         Set<Character> spies = spies(config);
         Set<Character> resistance = resistance(config);
         Set<Character> teamSpies = teamSpies(mission, spies);
@@ -81,7 +114,7 @@ public class LogicalAgent implements Agent {
         return 0.0;
     }
 
-    private double oracleVoting(String yays, Boolean[] config) {
+    private double oracleVoting(String yays, boolean[] config) {
         Set<Character> spies = spies(config);
         Set<Character> teamSpies = teamSpies(mission, spies);
         double score = 0.0;
@@ -101,7 +134,7 @@ public class LogicalAgent implements Agent {
         return score;
     }
 
-    private double oracleSabotages(String mission, int sabotaged, Boolean[] config) {
+    private double oracleSabotages(String mission, int sabotaged, boolean[] config) {
         Set<Character> spies = teamSpies(mission, spies(config));
         return (double) Math.max(0, sabotaged - spies.size());
     }
@@ -143,7 +176,7 @@ public class LogicalAgent implements Agent {
         return teamSpies;
     }
 
-    private Set<Character> spies(Boolean[] config) {
+    private Set<Character> spies(boolean[] config) {
         Set<Character> spies = new HashSet<Character>();
         for (int i = 0; i < config.length; ++i) {
             if (config[i]) {
@@ -153,7 +186,7 @@ public class LogicalAgent implements Agent {
         return spies;
     }
 
-    private Set<Character> resistance(Boolean[] config) {
+    private Set<Character> resistance(boolean[] config) {
         Set<Character> resistance = new HashSet<Character>();
         for (int i = 0; i < config.length; ++i) {
             if (!config[i]) {
@@ -163,20 +196,34 @@ public class LogicalAgent implements Agent {
         return resistance;
     }
 
-    private Map.Entry<Boolean[], Double> likeliest() {
-        List<Map.Entry<Boolean[], Double>> list = new ArrayList<Map.Entry<Boolean[], Double>>(permutations.entrySet());
+    private Map.Entry<boolean[], Double> likeliest() {
+        List<Map.Entry<boolean[], Double>> list = new ArrayList<Map.Entry<boolean[], Double>>(permutations.entrySet());
         Collections.shuffle(list);
-        Collections.sort(list, new Comparator<Map.Entry<Boolean[], Double>>() {
+        Collections.sort(list, new Comparator<Map.Entry<boolean[], Double>>() {
             @Override
-            public int compare(Map.Entry<Boolean[], Double> o1, Map.Entry<Boolean[], Double> o2) {
+            public int compare(Map.Entry<boolean[], Double> o1, Map.Entry<boolean[], Double> o2) {
                 return (int) Math.signum(o1.getValue() - o2.getValue());
             }
         });
         return list.get(0);
     }
 
+    private void waitForCalculation() {
+        Iterator<Future<?>> iterator = tasks.iterator();
+        while (iterator.hasNext()) {
+            Future<?> task = iterator.next();
+            try {
+                if (!task.isDone()) {
+                    task.get();
+                }
+            } catch (Exception ignore) {}
+            iterator.remove();
+        }
+    }
+
     @Override
     public String do_Nominate(int number) {
+        waitForCalculation();
         Set<Character> set = sample(resistance(likeliest().getKey()), number - 1);
         set.add(me);
         StringBuilder sb = new StringBuilder();
@@ -206,20 +253,26 @@ public class LogicalAgent implements Agent {
         this.mission = mission;
         this.leader = leader.charAt(0);
         ++tries;
-        for (Map.Entry<Boolean[], Double> entry : permutations.entrySet()) {
-            Double score = oracleSelection(this.leader, mission, entry.getKey());
-            entry.setValue(entry.getValue() + score);
-        }
+        run(new Runnable() {
+            @Override
+            public void run() {
+                for (Map.Entry<boolean[], Double> entry : permutations.entrySet()) {
+                    Double score = oracleSelection(LogicalAgent.this.leader, LogicalAgent.this.mission, entry.getKey());
+                    entry.setValue(entry.getValue() + score);
+                }
+            }
+        });
     }
 
     @Override
     public boolean do_Vote() {
+        waitForCalculation();
         Boolean advisor = adviserVote(mission);
         if (advisor != null) {
             return advisor;
         }
         List<Double> list = new ArrayList<Double>();
-        for (Map.Entry<Boolean[], Double> entry : permutations.entrySet()) {
+        for (Map.Entry<boolean[], Double> entry : permutations.entrySet()) {
             Set<Character> spies = teamSpies(mission, spies(entry.getKey()));
             if (spies.size() == 0) {
                 list.add(entry.getValue());
@@ -238,11 +291,16 @@ public class LogicalAgent implements Agent {
     }
 
     @Override
-    public void get_Votes(String yays) {
-        for (Map.Entry<Boolean[], Double> entry : permutations.entrySet()) {
-            Double score = oracleVoting(yays, entry.getKey());
-            entry.setValue(entry.getValue() + score);
-        }
+    public void get_Votes(final String yays) {
+        run(new Runnable() {
+            @Override
+            public void run() {
+                for (Map.Entry<boolean[], Double> entry : permutations.entrySet()) {
+                    Double score = oracleVoting(yays, entry.getKey());
+                    entry.setValue(entry.getValue() + score);
+                }
+            }
+        });
     }
 
     @Override
@@ -252,6 +310,7 @@ public class LogicalAgent implements Agent {
 
     @Override
     public boolean do_Betray() {
+        waitForCalculation();
         if (failures == 2 || round == 5) {
             return true;
         }
@@ -269,11 +328,16 @@ public class LogicalAgent implements Agent {
     }
 
     @Override
-    public void get_Traitors(int traitors) {
-        for (Map.Entry<Boolean[], Double> entry : permutations.entrySet()) {
-            Double score = oracleSabotages(mission, traitors, entry.getKey());
-            entry.setValue(entry.getValue() + score);
-        }
+    public void get_Traitors(final int traitors) {
+        run(new Runnable() {
+            @Override
+            public void run() {
+                for (Map.Entry<boolean[], Double> entry : permutations.entrySet()) {
+                    Double score = oracleSabotages(mission, traitors, entry.getKey());
+                    entry.setValue(entry.getValue() + score);
+                }
+            }
+        });
     }
 
     @Override

@@ -1,6 +1,4 @@
-package agent.mcts.impl;
-
-import agent.mcts.MCTS;
+package agent.mcts;
 
 import java.util.*;
 
@@ -234,7 +232,7 @@ public class GameState implements MCTS.State {
     /**
      * @return the current round of the game, from 1..6 where 6 means the game has ended
      */
-    private int round() {
+    public int round() {
         return round;
     }
 
@@ -327,6 +325,8 @@ public class GameState implements MCTS.State {
                             return (int) Math.signum(o2.getValue() - o1.getValue());
                         }
                     });
+                    //weight transitions such that resistance members are less likely to nominate teams which they think
+                    // are likely to contain spies TODO improve this/experiment with this weighting
                     for (int i = 0; i < list.size(); ++i) {
                         transitions.put(new ResistanceTransition.Nomination(list.get(i).getKey()), (double) (i + 1) / list.size());
                     }
@@ -343,7 +343,8 @@ public class GameState implements MCTS.State {
             case VOTING: {
                 if (me == players.charAt(currentPlayer) || contains(spies, players.charAt(currentPlayer))) {
                     transitions.put(new ResistanceTransition.Vote(true), 1.0);
-                    transitions.put(new ResistanceTransition.Vote(false), 1.0);
+                    if (currentLeader != currentPlayer)
+                        transitions.put(new ResistanceTransition.Vote(false), 1.0);
                 } else {
                     Perspective perspective = map.get(players.charAt(currentPlayer));
                     double suspicion = 0;
@@ -407,7 +408,7 @@ public class GameState implements MCTS.State {
             } else {
                 startPlayer = players.indexOf(me);
                 currentPlayer = players.indexOf(me);
-                if (votes >= Math.ceil((double) players.length() / 2) || nominationAttempt == 5) {
+                if (votes > players.length() / 2 || nominationAttempt == 5) {
                     phase = Phase.MISSION;
                     traitors = 0;
                     nominationAttempt = 1;
@@ -431,6 +432,7 @@ public class GameState implements MCTS.State {
                 try {
                     update(mission, traitors);
                 } catch (AssertionError e) {
+                    //TODO check if this error has disappeared completely???
                     System.out.println(this + " " + currentPlayer + " " + startPlayer);
                     throw new Error(e);
                 }

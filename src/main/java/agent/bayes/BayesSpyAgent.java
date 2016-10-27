@@ -3,7 +3,7 @@ package agent.bayes;
 import agent.GameState;
 import agent.Player;
 import agent.ResistancePerspective;
-import core.Agent;
+import cits3001_2016s2.Agent;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;
