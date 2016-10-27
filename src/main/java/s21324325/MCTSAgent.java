@@ -1,6 +1,7 @@
 package s21324325;
 
 import cits3001_2016s2.Agent;
+import s21329882.BayesResistanceAgent;
 
 /**
  * The Bayesian inference agent.
@@ -28,7 +29,7 @@ public class MCTSAgent implements Agent {
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
         if (!initialised) {
-            delegate = (spies.contains("?") ? new SearchAgent() : new LogicalAgent());
+            delegate = (spies.contains("?") ? new BayesResistanceAgent() : new SearchAgent());
             initialised = true;
         }
         delegate.get_status(name, players, spies, mission, failures);

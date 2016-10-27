@@ -1,7 +1,6 @@
 package s21329882;
 
 import cits3001_2016s2.Agent;
-import s21324325.util.CombinationIterator;
 
 import java.util.*;
 
@@ -27,7 +26,9 @@ public class BayesResistanceAgent implements Agent {
         }
         state.missionNumber(mission);
         state.failures(failures);
-        updateSuspectsPair();
+
+        if (initialised)
+            updateSuspectsPair();
     }
 
     private Map.Entry<Collection<Player>, Double> getBadPair() {
@@ -44,15 +45,13 @@ public class BayesResistanceAgent implements Agent {
     }
 
     private Collection<Player> getGood() {
-        List<Player> players = new ArrayList<Player>(perspective.players());
-        players.remove(perspective.me());
+        List<Player> players = new ArrayList<Player>(perspective.others());
         Map.Entry<Collection<Player>, Double> bad = getBadPair();
         if (bad.getValue() > 0) {
             for (Player p : bad.getKey()) {
                 players.remove(p);
             }
         }
-        Collections.shuffle(players);
         Collections.sort(players, new Comparator<Player>() {
             @Override
             public int compare(Player o1, Player o2) {
@@ -106,13 +105,18 @@ public class BayesResistanceAgent implements Agent {
     @Override
     public String do_Nominate(int number) {
         if (!initialised) {
-            CombinationIterator<Player> iterator = new CombinationIterator<Player>(perspective.players(), state.numberOfSpies());
-            while (iterator.hasNext()) {
-                Collection<Player> next = iterator.next();
-                if (!next.contains(perspective.me()))
-                    suspectsPair.put(next, 0.0);
-            }
+            List<Player> others = perspective.others();
+            combinations(state.numberOfSpies(), 0, 0, others, new boolean[others.size()], suspectsPair);
             initialised = true;
+
+            StringBuilder sb = new StringBuilder();
+            sb.append(perspective.me().id());
+            Collections.shuffle(perspective.others());
+            for (Player p : perspective.others()) {
+                if (sb.length() == number) break;
+                sb.append(p.id());
+            }
+            return sb.toString();
         }
 
         Collection<Player> good = getGood();
@@ -138,10 +142,8 @@ public class BayesResistanceAgent implements Agent {
     @Override
     public boolean do_Vote() {
         if (!initialised) {
-            CombinationIterator<Player> iterator = new CombinationIterator<Player>(perspective.players(), state.numberOfSpies());
-            while (iterator.hasNext()) {
-                suspectsPair.put(iterator.next(), 0.0);
-            }
+            List<Player> others = perspective.others();
+            combinations(state.numberOfSpies(), 0, 0, others, new boolean[others.size()], suspectsPair);
             initialised = true;
             return true;
         }
@@ -260,6 +262,26 @@ public class BayesResistanceAgent implements Agent {
 
     }
 
-    private
+    private void combinations(int spies, int start, int curr, List<Player> others, boolean[] used, Map<Collection<Player>, Double> map) {
+        if (curr == spies) {
+            Collection<Player> collection = new ArrayList<Player>(spies);
+            for (int i = 0; i < used.length; ++i) {
+                if (used[i])
+                    collection.add(others.get(i));
+            }
+            map.put(collection, 0.0);
+            return;
+        }
+        //another base case - finished
+        if (start == others.size()) return;
+
+        //use the player at the start index in the team and recurse
+        used[start] = true;
+        combinations(spies, start + 1, curr + 1, others, used, map);
+
+        //don't use the player at the start index in the team and recurse
+        used[start] = false;
+        combinations(spies, start + 1, curr, others, used, map);
+    }
 
 }

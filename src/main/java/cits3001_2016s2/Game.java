@@ -1,5 +1,6 @@
 package cits3001_2016s2;
 
+import s21324325.MCTSAgent;
 import s21329882.BayesAgent;
 
 import java.util.*;
@@ -131,8 +132,11 @@ public class Game{
    * */
   private void stopwatchOff(long limit, Character player){
     long delay = System.currentTimeMillis()-stopwatch;
-    if(delay>limit)
-      log("Player: "+player+". Time exceeded by "+delay);
+    if(delay>limit) {
+      log("Player: "+player+". Time exceeded by "+(delay-limit));
+      System.out.println(spies.contains(player));
+      System.exit(1);
+    }
   }
 
   /**
@@ -144,10 +148,12 @@ public class Game{
   private void statusUpdate(int round, int fails){
     for(Character c: players.keySet()){
       if(spies.contains(c)){
-        stopwatchOn(); players.get(c).get_status(""+c,playerString,spyString,round,fails); stopwatchOff(100,c);
+        Agent a = players.get(c);
+        stopwatchOn(); a.get_status(""+c,playerString,spyString,round,fails); stopwatchOff(100,c);
       }
-      else{ 
-        stopwatchOn(); players.get(c).get_status(""+c,playerString,resString,round,fails); stopwatchOff(100,c);
+      else{
+        Agent a = players.get(c);
+        stopwatchOn(); a.get_status(""+c,playerString,resString,round,fails); stopwatchOff(100,c);
       }
     }
   }
@@ -410,9 +416,9 @@ public class Game{
       FileWriter fw = new FileWriter(f);
       Competitor[] contenders = {
               new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              //new Competitor(new MCTSAgent(), "MCTS", "Sam")
+              new Competitor(new MCTSAgent(), "MCTS", "Sam")
       };
-      fw.write(tournament(contenders, 10));
+      fw.write(tournament(contenders, 100));
       fw.close();
     }
     catch(IOException e){System.out.println("IO fail");}

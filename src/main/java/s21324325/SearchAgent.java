@@ -33,7 +33,6 @@ public class SearchAgent implements Agent {
      */
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
-
         if (!initialised) {
             state = new GameState(players, spies, name.charAt(0));
             state.phase(GameState.Phase.NOMINATION);

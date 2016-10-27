@@ -11,8 +11,12 @@ import java.util.*;
  */
 public class Player {
 
+    private static final double SUPPORT_WEIGHT = 0.25;
+    private static final double SUSPICIOUS_ACTION_WEIGHT = 0.6;
+    private static final double RESISTANCE_ACTION_WEIGHT = 0.1;
+
     private final char id;
-    private final Map<Player, Variable> friends;
+    private final Map<Player, Probability> friends;
     private final Variable supportSuspect;
     private final Variable suspiciousActions;
     private final Variable possibleGoodActions;
@@ -20,17 +24,17 @@ public class Player {
 
     public Player(GameState data, char id, double initialSuspicion) {
         this.id = id;
-        this.friends = new HashMap<Player, Variable>();
+        this.friends = new HashMap<Player, Probability>();
         this.supportSuspect = new Variable((double) data.numberOfSpies() / data.numberOfPlayers(), 1);
         this.suspiciousActions = new Variable(0, 0);
         this.possibleGoodActions = new Variable(0, 0);
         this.bayesSuspicion = initialSuspicion;
     }
 
-    public Variable friendship(Player player) {
-        Variable friendship = friends.get(player);
+    public Probability friendship(Player player) {
+        Probability friendship = friends.get(player);
         if (friendship == null) {
-            friendship = new Variable(0, 0);
+            friendship = new Probability(0.4);
             friends.put(player, friendship);
         }
         return friendship;
@@ -69,7 +73,8 @@ public class Player {
      * @return the likelihood that the player will betray the mission
      */
     public double likelihoodToBetray(GameState state, Collection<Player> spiesOnMission) {
-        return 0.95 / spiesOnMission.size();
+        if (spiesOnMission.size() == 1) return 0.95;
+        return 1.0 / spiesOnMission.size();
     }
 
     public boolean definitelyASpy() {
@@ -81,9 +86,9 @@ public class Player {
         if (bayesSuspicion == 1) return 1;
 
         double value = bayesSuspicion();
-        value *= (0.75 + 0.25 * supportSuspect.estimate());
-        value *= (0.4 + 0.6 * suspiciousActions.estimate());
-        value *= (1 - 0.1 * possibleGoodActions.estimate());
+        value *= ((1 - SUPPORT_WEIGHT) + SUPPORT_WEIGHT * supportSuspect.estimate());
+        value *= ((1 - SUSPICIOUS_ACTION_WEIGHT) + SUSPICIOUS_ACTION_WEIGHT * suspiciousActions.estimate());
+        value *= (1 - RESISTANCE_ACTION_WEIGHT * possibleGoodActions.estimate());
         return value;
     }
 
