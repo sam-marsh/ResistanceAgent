@@ -212,29 +212,45 @@ public class GameState {
         }
 
         /**
+         * Sets the players who have voted yes for the mission.
          *
-         * @param yays
+         * @param yays the player identifiers of the players who voted yes
          */
         public void voted(String yays) {
             this.yays = yays;
         }
 
+        /**
+         * @return who voted yes for the mission to go ahead
+         */
         public String yays() {
             return yays;
         }
 
+        /**
+         * @return the number of spies that sabotaged the mission
+         */
         public int traitors() {
             return traitors;
         }
 
+        /**
+         * @return the identifier of the player who nominated this mission
+         */
         public char leader() {
             return leader;
         }
 
+        /**
+         * @return all players on the team
+         */
         public Set<Character> team() {
             return team;
         }
 
+        /**
+         * {@inheritDoc}
+         */
         @Override
         public String toString() {
             return String.format("Mission{leader=%s, team=%s, done=%s, traitors=%d}", leader, team, done(), traitors);
