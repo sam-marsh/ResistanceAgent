@@ -121,22 +121,10 @@ public class BayesSpyAgent implements Agent {
             return sb.toString();
         }
 
-        //find incorrectness for each resistance member's prediction based on each team containing me, sort by maximum
-        // incorrectness, and return the one that makes the resistance members the most wrong in their inference
-        Map<String, Double> map = new HashMap<String, Double>();
-        computeUncertainty(number, 0, 0, new boolean[state.numberOfPlayers()], map, Double.MAX_VALUE);
-        List<Map.Entry<String, Double>> list = new LinkedList<Map.Entry<String, Double>>(map.entrySet());
-        Collections.shuffle(list);
-        //sort descending
-        Collections.sort(list, new Comparator<Map.Entry<String, Double>>() {
-            @Override
-            public int compare(Map.Entry<String, Double> o1, Map.Entry<String, Double> o2) {
-                return (int) Math.signum(o1.getValue() - o2.getValue());
-            }
-        });
-
-        //return the first value
-        return list.get(0).getKey();
+        return computeUncertainty(
+                number, 0, 0,  new boolean[state.numberOfPlayers()],
+                new AbstractMap.SimpleEntry<String, Double>(null, Double.MAX_VALUE)
+        ).getKey();
     }
 
     /**
@@ -322,10 +310,8 @@ public class BayesSpyAgent implements Agent {
      * @param start recursive parameter - pass 0
      * @param curr recursive parameter - pass 0
      * @param used recursive parameter - pass an array of false values of size {@link GameState#numberOfPlayers()}
-     * @param map the map to place the computed values in. The keys are the possible teams to choose, along with their
-     *            incorrectness values.
      */
-    private double computeUncertainty(int select, int start, int curr, boolean[] used, Map<String, Double> map, final double min) {
+    private Map.Entry<String, Double> computeUncertainty(int select, int start, int curr, boolean[] used, final Map.Entry<String, Double> min) {
         //recursive base case
         if (curr == select) {
             //create the team string
@@ -359,18 +345,17 @@ public class BayesSpyAgent implements Agent {
                         for (Player player : perspective.players())
                             tmp.put(player, player.bayesSuspicion());
 
+                        if (total.value > min.getValue()) return null;
+
                         perspective.updateSuspicion();
 
                         //sum up how wrong each player's suspicion of the spies is
-                        double wrongness = 0;
                         for (Player player : perspective.players()) {
                             if (!player.equals(perspective.me())) {
-                                wrongness += Math.pow(player.bayesSuspicion() - unknown, 2);
+                                total.increment(Math.pow(player.bayesSuspicion() - unknown, 2));
+                                if (total.value > min.getValue()) break;
                             }
                         }
-
-                        //add to the total
-                        total.increment(wrongness);
 
                         //reset suspicion
                         for (Map.Entry<Player, Double> entry : tmp.entrySet())
@@ -388,33 +373,34 @@ public class BayesSpyAgent implements Agent {
                 e.printStackTrace();
             }
 
-            if (total.value <= min)
-                map.put(sb.toString(), total.value);
+            if (total.value < min.getValue()) {
+                return new AbstractMap.SimpleEntry<String, Double>(sb.toString(), total.value);
+            } else if (total.value == min.getValue()) {
+                if (Math.random() < 0.5) {
+                    return new AbstractMap.SimpleEntry<String, Double>(sb.toString(), total.value);
+                }
+            }
 
-            return Math.min(min, total.value);
+            return min;
         }
         //another base case - finished
         if (start == state.numberOfPlayers()) return min;
 
         //use the player at the start index in the team and recurse
         used[start] = true;
-        double newMin = computeUncertainty(select, start + 1, curr + 1, used, map, min);
+        Map.Entry<String, Double> newMin = computeUncertainty(select, start + 1, curr + 1, used, min);
 
         //don't use the player at the start index in the team and recurse
         used[start] = false;
-        return computeUncertainty(select, start + 1, curr, used, map, newMin);
+        return computeUncertainty(select, start + 1, curr, used, newMin);
     }
 
     private class AtomicDouble {
 
-        private volatile double value = 0;
+        volatile double value = 0;
 
-        public synchronized void increment(double by) {
+        synchronized void increment(double by) {
             value += by;
-        }
-
-        public double value() {
-            return value;
         }
 
     }

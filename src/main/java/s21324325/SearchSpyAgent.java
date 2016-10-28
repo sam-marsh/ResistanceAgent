@@ -73,7 +73,6 @@ public class SearchSpyAgent implements Agent {
         //get the best move
         MCTS.Transition transition = searcher.transition();
 
-        System.out.println("MOVE: " + transition);
         //perform the move
         return ((ResistanceTransition.Nomination) transition).selection();
     }
@@ -105,7 +104,6 @@ public class SearchSpyAgent implements Agent {
 
         //get the best move
         MCTS.Transition transition = searcher.transition();
-        System.out.println("MOVE: " + transition);
 
         //perform the move
         return ((ResistanceTransition.Vote) transition).yes();
@@ -151,7 +149,6 @@ public class SearchSpyAgent implements Agent {
 
         //get the best move
         MCTS.Transition transition = searcher.transition();
-        System.out.println("MOVE: " + transition);
 
         //perform the move
         return ((ResistanceTransition.Sabotage) transition).sabotage();
