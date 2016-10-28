@@ -25,10 +25,6 @@ public class BayesResistanceAgent implements Agent {
     //once a group's suspicion grows above this value, don't decrease it - they're the spies...
     private static final double SUSPICION_CUTOFF = 0.99;
 
-    //the weighting to assign when considering how friendly the members of each possible spy combination
-    // have been to each other
-    private static final double FRIENDSHIP_WEIGHT = 0.5;
-
     //used to track whether this is the first time that get_status has been called
     private boolean initialised;
 
@@ -57,7 +53,7 @@ public class BayesResistanceAgent implements Agent {
             random = new Random();
         }
 
-        state.missionNumber(mission);
+        state.round(mission);
         state.failures(failures);
 
         if (initialised) {
@@ -394,7 +390,7 @@ public class BayesResistanceAgent implements Agent {
                         }
                     }
                 }
-                v *= ((1 - FRIENDSHIP_WEIGHT) + FRIENDSHIP_WEIGHT * u);
+                v *= ((1.0 - ResistancePerspective.Player.FRIENDSHIP_WEIGHT) + ResistancePerspective.Player.FRIENDSHIP_WEIGHT * u);
 
                 //weight according to how much members of the group have been helpful to spies
                 u = 1.0;

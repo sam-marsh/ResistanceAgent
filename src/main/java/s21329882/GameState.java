@@ -5,18 +5,39 @@ import java.util.Collection;
 import java.util.HashSet;
 import java.util.Set;
 
-class GameState {
+/**
+ * Holds some data relating to the current game/round etc.
+ */
+public class GameState {
 
+    //total number of players in the game, from 5-10
     private final int numberOfPlayers;
+
+    //total number of spies in the game, from 2-4
     private final int numberOfSpies;
+
+    //each character's identifier
     private final char[] players;
 
+    //the current round
     private int round;
+
+    //the number of missions that have failed
     private int failures;
+
+    //the mission currently being voted on
     private Mission proposedMission;
+
+    //the mission currently being 'executed'
     private Mission mission;
 
-    GameState(String players, String spies) {
+    /**
+     * Initialises a new game state to carry information.
+     *
+     * @param players the player identifiers
+     * @param spies the spy identifiers
+     */
+    public GameState(String players, String spies) {
         this.players = players.toCharArray();
         this.numberOfPlayers = players.length();
         this.numberOfSpies = spies.length();
@@ -26,58 +47,108 @@ class GameState {
         this.mission = null;
     }
 
-    boolean gameOver() {
+    /**
+     * @return true if and only if the game is finished
+     */
+    public boolean gameOver() {
         return round == 6;
     }
 
+    /**
+     * @return the player identifiers of all players in the game
+     */
     public char[] players() {
         return players;
     }
 
-    int numberOfSpies() {
+    /**
+     * @return the total number of spies in the game
+     */
+    public int numberOfSpies() {
         return numberOfSpies;
     }
 
-    int numberOfPlayers() {
+    /**
+     * @return the total number of players in the game
+     */
+    public int numberOfPlayers() {
         return numberOfPlayers;
     }
 
-    int round() {
+    /**
+     * @return the current round from 1-5, or 6 if the game is over
+     */
+    public int round() {
         return round;
     }
 
-    void missionNumber(int _missionNumber) {
-        round = _missionNumber;
+    /**
+     * Sets the current mission.
+     *
+     * @param round the round from 1-6 (6 if game over)
+     */
+    public void round(int round) {
+        this.round = round;
     }
 
-    public void failures(int _failures) {
-        failures = _failures;
+    /**
+     * Sets the number of failed missions.
+     *
+     * @param failures the number of failed missions
+     */
+    public void failures(int failures) {
+        this.failures = failures;
     }
 
-    int resistancePoints() {
+    /**
+     * @return the number of points for the resistance side
+     */
+    public int resistancePoints() {
         return round - failures - 1;
     }
 
-    int spyPoints() {
+    /**
+     * @return the number of points for the spy side
+     */
+    public int spyPoints() {
         return failures;
     }
 
-    void proposedMission(Mission _mission) {
-        proposedMission = _mission;
+    /**
+     * Sets the mission currently being voted on.
+     *
+     * @param mission the mission
+     */
+    public void proposedMission(Mission mission) {
+        proposedMission = mission;
     }
 
-    Mission proposedMission() {
+    /**
+     * @return the mission currently being voted on
+     */
+    public Mission proposedMission() {
         return proposedMission;
     }
 
-    public void mission(Mission _mission) {
-        mission = _mission;
+    /**
+     * Sets the mission currently being 'executed'.
+     *
+     * @param mission the mission in progress
+     */
+    public void mission(Mission mission) {
+        this.mission = mission;
     }
 
+    /**
+     * @return the mission currently in progress
+     */
     public Mission mission() {
         return mission;
     }
 
+    /**
+     * {@inheritDoc}
+     */
     @Override
     public String toString() {
         return String.format(
@@ -85,43 +156,66 @@ class GameState {
                 numberOfPlayers, numberOfSpies, Arrays.toString(players), round, failures);
     }
 
-    enum Team {
+    /**
+     * Represents a mission round in the game.
+     */
+    public static class Mission {
 
-        RESISTANCE,
-        GOVERNMENT
-
-    }
-
-    static class Mission {
-
+        //the leader of the mission - who nominated it
         private final char leader;
+
+        //every player on the team (may or may not include the leader)
         private final Set<Character> team;
 
+        //the number of sabotages
         private int traitors;
+
+        //who voted for this mission
         private String yays;
 
-        Mission(String _leader, String _team) {
-            leader = _leader.charAt(0);
-            team = new HashSet<Character>();
-            for (char id : _team.toCharArray()) {
-                team.add(id);
+        /**
+         * Creates a new mission with the given leader and team.
+         *
+         * @param leader the mission leader
+         * @param team the players on the team
+         */
+        public Mission(String leader, String team) {
+            this.leader = leader.charAt(0);
+            this.team = new HashSet<Character>();
+            for (char id : team.toCharArray()) {
+                this.team.add(id);
             }
             traitors = -1;
         }
 
-        boolean done() {
+        /**
+         * @return whether this mission has been carried out yet
+         */
+        public boolean done() {
             return traitors != -1;
         }
 
-        void undo() {
+        /**
+         * Resets the mission so that it has 'not yet been executed' again. Used for simulation.
+         */
+        public void undo() {
             this.traitors = -1;
         }
 
-        void done(int traitors) {
+        /**
+         * Marks the mission as completed.
+         *
+         * @param traitors the number of spies that chose to sabotage the mission
+         */
+        public void done(int traitors) {
             this.traitors = traitors;
         }
 
-        void voted(String yays) {
+        /**
+         *
+         * @param yays
+         */
+        public void voted(String yays) {
             this.yays = yays;
         }
 

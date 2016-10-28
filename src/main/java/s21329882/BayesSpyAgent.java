@@ -59,7 +59,7 @@ public class BayesSpyAgent implements Agent {
             perspectives = new HashSet<ResistancePerspective>(players.length() - spies.length());
         }
 
-        state.missionNumber(mission);
+        state.round(mission);
         state.failures(failures);
 
         if (state.gameOver()) {

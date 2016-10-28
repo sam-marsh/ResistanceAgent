@@ -278,6 +278,10 @@ public class ResistancePerspective {
         // resistance member
         public static final double BEHAVED_LIKE_RESISTANCE_WEIGHT = 0.1;
 
+        //the weighting to assign when considering how friendly the members of each possible spy combination
+        // have been to each other
+        public static final double FRIENDSHIP_WEIGHT = 0.5;
+
         //this player's identifier
         private final char id;
 
