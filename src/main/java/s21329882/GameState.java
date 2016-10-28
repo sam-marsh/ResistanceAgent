@@ -26,6 +26,10 @@ class GameState {
         this.mission = null;
     }
 
+    boolean gameOver() {
+        return round == 6;
+    }
+
     public char[] players() {
         return players;
     }

@@ -2,6 +2,8 @@ package s21329882;
 
 import cits3001_2016s2.Agent;
 
+import java.util.Collection;
+
 /**
  * The Bayesian inference agent.
  */
@@ -108,6 +110,27 @@ public class BayesAgent implements Agent {
     @Override
     public void get_Accusation(String accuser, String accused) {
         delegate.get_Accusation(accuser, accused);
+    }
+
+    /**
+     * @param s a string
+     * @param collection a collection of characters
+     * @return true if the collection of characters and the string contain exactly the same characters
+     */
+    static boolean same(String s, Collection<Character> collection) {
+        for (char c : collection) {
+            if (!contains(s, c)) return false;
+        }
+        return true;
+    }
+
+    /**
+     * @param s a string
+     * @param c a character
+     * @return true if the string contains the character
+     */
+    static boolean contains(String s, char c) {
+        return s.indexOf(c) != -1;
     }
 
 }

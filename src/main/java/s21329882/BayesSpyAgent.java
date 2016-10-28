@@ -10,7 +10,7 @@ import java.util.concurrent.Future;
 
 /**
  * This is the spy agent. It uses Bayesian inference to decide on transitions based on which options will minimise the
- * incorrectness of the opponent's knowledge.
+ * opponent's knowledge (i.e. maximises the uncertainty in our opponents).
  */
 public class BayesSpyAgent implements Agent {
 
@@ -28,10 +28,6 @@ public class BayesSpyAgent implements Agent {
     //the view of the game from each resistance member's perspective - including who we think they think are spies
     private Set<ResistancePerspective> perspectives;
 
-    //used to keep track of who the leader of the current mission is, since it isn't passed to the get method
-    private String lastNominatedLeader;
-    private String lastNominatedMission;
-
     //my identifier character
     private char me;
 
@@ -45,9 +41,7 @@ public class BayesSpyAgent implements Agent {
     /**
      * Creates a new spy agent.
      */
-    public BayesSpyAgent() {
-        lastNominatedLeader = null;
-        lastNominatedMission = null;
+    BayesSpyAgent() {
         service = Executors.newCachedThreadPool();
         initialised = false;
     }
@@ -58,6 +52,7 @@ public class BayesSpyAgent implements Agent {
     @Override
     public void get_status(String name, String players, String spies, int mission, int failures) {
         if (!initialised) {
+            //half-initialise - still need to construct resistance perspectives, but wait for do_ method
             me = name.charAt(0);
             this.spies = spies;
             state = new GameState(players, spies);
@@ -67,13 +62,9 @@ public class BayesSpyAgent implements Agent {
         state.missionNumber(mission);
         state.failures(failures);
 
-        if (mission == 6) {
+        if (state.gameOver()) {
             service.shutdownNow();
         }
-    }
-
-    private boolean contains(String s, char c) {
-        return s.indexOf(c) != -1;
     }
 
     /**
@@ -87,35 +78,29 @@ public class BayesSpyAgent implements Agent {
             for (Character c : state.players()) {
                 if (spies.indexOf(c) == -1) {
                     perspectives.add(
-                            new ResistancePerspective(state, String.valueOf(c), new String(state.players()), resistanceString)
+                            new ResistancePerspective(
+                                    state, String.valueOf(c), new String(state.players())
+                            )
                     );
                 }
             }
 
+            //first round - create random group
             StringBuilder sb = new StringBuilder();
             sb.append(me);
 
+            //create list of resistance players
             List<Character> resistance = new ArrayList<Character>();
             for (char c : state.players())
-                if (!contains(spies, c))
+                if (!BayesAgent.contains(spies, c))
                     resistance.add(c);
 
+            //add resistance members until reaches enough players
             Collections.shuffle(resistance);
-            for (char c : state.players()) {
-                if (sb.length() == number)
-                    break;
-                sb.append(c);
-            }
-
-            resistance = new ArrayList<Character>();
-            for (char c : spies.toCharArray())
-                resistance.add(c);
-            Collections.shuffle(resistance);
-            resistance.remove(new Character(me));
-
             for (char c : resistance) {
-                if (sb.length() == number)
+                if (sb.length() == number) {
                     break;
+                }
                 sb.append(c);
             }
 
@@ -123,7 +108,9 @@ public class BayesSpyAgent implements Agent {
             return sb.toString();
         }
 
-        return computeUncertainty(
+        //pick the group which will induce the most uncertainty in resistance members if all
+        // spies sabotage
+        return maximumUncertaintyChoice(
                 number, 0, 0,  new boolean[state.numberOfPlayers()],
                 new AbstractMap.SimpleEntry<String, Double>(null, Double.MAX_VALUE)
         ).getKey();
@@ -134,8 +121,6 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public void get_ProposedMission(String leader, String mission) {
-        lastNominatedLeader = leader;
-        lastNominatedMission = mission;
         state.proposedMission(new GameState.Mission(leader, mission));
     }
 
@@ -148,8 +133,8 @@ public class BayesSpyAgent implements Agent {
         if (state.proposedMission().leader() == me)
             return true;
 
-        //TODO: improve this
-        return numberOfSpiesOnMission(state.proposedMission()) >= 1;
+        //accept any mission where the spies can win a point
+        return numberOfSpiesOnMission(state.proposedMission()) >= numSabotagesRequiredForPoint();
     }
 
     /**
@@ -163,10 +148,10 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public void get_Mission(String mission) {
-        //pass the leader if we know it, which should always be the case
-        if (mission.equals(lastNominatedMission)) {
-            state.mission(new GameState.Mission(lastNominatedLeader, lastNominatedMission));
+        if (BayesAgent.same(mission, state.proposedMission().team())) {
+            state.mission(state.proposedMission());
         } else {
+            //mission must have been forcefully allocated
             state.mission(new GameState.Mission(null, mission));
         }
     }
@@ -196,15 +181,15 @@ public class BayesSpyAgent implements Agent {
         for (ResistancePerspective perspective : perspectives) {
 
             //record previous suspicions for each player so we can 'rollback' after simulation
-            Map<Player, Double> tmp = new HashMap<Player, Double>(perspective.players().size());
-            for (Player player : perspective.players())
+            Map<ResistancePerspective.Player, Double> tmp = new HashMap<ResistancePerspective.Player, Double>(perspective.players().size());
+            for (ResistancePerspective.Player player : perspective.players())
                 tmp.put(player, player.bayesSuspicion());
 
             //update the suspicion based on the sabotages
             perspective.updateSuspicion();
 
             //sum up the suspicion increase of the spies
-            for (Player p : perspective.players()) {
+            for (ResistancePerspective.Player p : perspective.players()) {
                 if (spies.indexOf(p.id()) != -1) {
                     double newSuspicion = p.bayesSuspicion();
                     double oldSuspicion = tmp.get(p);
@@ -220,7 +205,7 @@ public class BayesSpyAgent implements Agent {
             }
 
             //rollback suspicion values
-            for (Map.Entry<Player, Double> entry : tmp.entrySet())
+            for (Map.Entry<ResistancePerspective.Player, Double> entry : tmp.entrySet())
                 entry.getKey().bayesSuspicion(entry.getValue());
 
             if (!continuing)
@@ -266,6 +251,7 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public String do_Accuse() {
+        //don't bother
         return "";
     }
 
@@ -273,7 +259,9 @@ public class BayesSpyAgent implements Agent {
      * {@inheritDoc}
      */
     @Override
-    public void get_Accusation(String accuser, String accused) {}
+    public void get_Accusation(String accuser, String accused) {
+        //nope
+    }
 
 
     /**
@@ -313,7 +301,7 @@ public class BayesSpyAgent implements Agent {
      * @param curr recursive parameter - pass 0
      * @param used recursive parameter - pass an array of false values of size {@link GameState#numberOfPlayers()}
      */
-    private Map.Entry<String, Double> computeUncertainty(int select, int start, int curr, boolean[] used, final Map.Entry<String, Double> min) {
+    private Map.Entry<String, Double> maximumUncertaintyChoice(int select, int start, int curr, boolean[] used, final Map.Entry<String, Double> min) {
         //recursive base case
         if (curr == select) {
             //create the team string
@@ -343,8 +331,8 @@ public class BayesSpyAgent implements Agent {
                 collection.add(new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
-                        Map<Player, Double> tmp = new HashMap<Player, Double>(perspective.players().size());
-                        for (Player player : perspective.players())
+                        Map<ResistancePerspective.Player, Double> tmp = new HashMap<ResistancePerspective.Player, Double>(perspective.players().size());
+                        for (ResistancePerspective.Player player : perspective.players())
                             tmp.put(player, player.bayesSuspicion());
 
                         if (total.value > min.getValue()) return null;
@@ -352,7 +340,7 @@ public class BayesSpyAgent implements Agent {
                         perspective.updateSuspicion();
 
                         //sum up how wrong each player's suspicion of the spies is
-                        for (Player player : perspective.players()) {
+                        for (ResistancePerspective.Player player : perspective.players()) {
                             if (!player.equals(perspective.me())) {
                                 total.increment(Math.pow(player.bayesSuspicion() - unknown, 2));
                                 if (total.value > min.getValue()) break;
@@ -360,7 +348,7 @@ public class BayesSpyAgent implements Agent {
                         }
 
                         //reset suspicion
-                        for (Map.Entry<Player, Double> entry : tmp.entrySet())
+                        for (Map.Entry<ResistancePerspective.Player, Double> entry : tmp.entrySet())
                             entry.getKey().bayesSuspicion(entry.getValue());
 
                         return null;
@@ -390,11 +378,15 @@ public class BayesSpyAgent implements Agent {
 
         //use the player at the start index in the team and recurse
         used[start] = true;
-        Map.Entry<String, Double> newMin = computeUncertainty(select, start + 1, curr + 1, used, min);
+        Map.Entry<String, Double> newMin = maximumUncertaintyChoice(select, start + 1, curr + 1, used, min);
 
         //don't use the player at the start index in the team and recurse
         used[start] = false;
-        return computeUncertainty(select, start + 1, curr, used, newMin);
+        return maximumUncertaintyChoice(select, start + 1, curr, used, newMin);
+    }
+
+    private int numSabotagesRequiredForPoint() {
+        return state.round() == 4 && state.numberOfPlayers() >= 7 ? 2 : 1;
     }
 
     private class AtomicDouble {

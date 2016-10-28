@@ -1,64 +1,89 @@
 package s21329882;
 
+import java.math.BigDecimal;
+import java.math.MathContext;
+import java.math.RoundingMode;
 import java.util.*;
 
 /**
- * Author: Sam Marsh
- * Date: 11/10/2016
+ * Represents the perspective of a resistance player. Holds suspicion values for each player,
+ * which are updated after game events (e.g. voting, missions etc.). Primarily uses Bayesian
+ * inference.
  */
-class ResistancePerspective {
+public class ResistancePerspective {
 
+    //general game data
     private final GameState state;
+
+    //which player i am
     private final Player me;
+
+    //all game players
     private final Map<Character, Player> players;
-    private final GameState.Team team;
+
+    //all players not including me
     private final List<Player> others;
 
-    ResistancePerspective(GameState _state, String _me, String _players, String _spies) {
+    /**
+     * Creates a new perspective of the game from the point of view of a resistance player
+     *
+     * @param _state game data
+     * @param _me my identifier
+     * @param _players all players
+     */
+    public ResistancePerspective(GameState _state, String _me, String _players) {
         state = _state;
         players = new HashMap<Character, Player>();
-        team = _spies.contains("?") ? GameState.Team.RESISTANCE : GameState.Team.GOVERNMENT;
         others = new ArrayList<Player>(_players.length() - 1);
 
+        //suspicion values equally distributed
         double initialSuspicion = (double) _state.numberOfSpies() / (_state.numberOfPlayers() - 1);
 
-        me = new Player(state, _me.charAt(0), 0);
+        me = new Player(_me.charAt(0), 0);
 
         players.put(me.id(), me);
         for (char id : _players.toCharArray()) {
             if (id != me.id()) {
-                Player player = new Player(state, id, initialSuspicion);
+                Player player = new Player(id, initialSuspicion);
                 players.put(id, player);
                 others.add(player);
             }
         }
     }
 
-    List<Player> others() {
+    /**
+     * @return all game players not including me
+     */
+    public List<Player> others() {
         return others;
     }
 
-    public GameState state() {
-        return state;
-    }
-
-    Player me() {
+    /**
+     * @return my character
+     */
+    public Player me() {
         return me;
     }
 
+    /**
+     * @return all game players
+     */
     public Collection<Player> players() {
         return players.values();
     }
 
-    public GameState.Team team() {
-        return team;
-    }
-
-    Player lookup(char id) {
+    /**
+     * @param id the player identifier
+     * @return the player object corresponding to the given identifier
+     */
+    public Player lookup(char id) {
         return players.get(id);
     }
 
-    void updateSuspicion() {
+    /**
+     * Updates the suspicion for each player based on the current round evidence - i.e. number of sabotages.
+     */
+    public void updateSuspicion() {
         //remove line below - still extremely useful to update probabilities when mission succeeds, since
         // if no sabotages occur it is more likely that there were no spies on the team
         //if (traitors == 0) return;
@@ -99,6 +124,15 @@ class ResistancePerspective {
             entry.getKey().bayesSuspicion(newValue);
         }
     }
+
+    /**
+     * {@inheritDoc}
+     */
+    @Override
+    public String toString() {
+        return String.format("ResistancePerspective{me=%s, players=%s}", me, players);
+    }
+
 
     /**
      * Computes the update probability given evidence using Bayes rule.
@@ -143,7 +177,7 @@ class ResistancePerspective {
      */
     private double computeProbabilityOfMissionSabotages(List<Player> players, int start, int curr, boolean[] spy) {
         //base case - have reached the correct combination size
-        if (curr == state().numberOfSpies()) {
+        if (curr == state.numberOfSpies()) {
             //create list of spies and then iterate over all possibilities for which spies did/didn't sabotage
             List<Player> spies = new LinkedList<Player>();
             for (int i = 0; i < players.size(); ++i) if (spy[i]) spies.add(players.get(i));
@@ -199,10 +233,10 @@ class ResistancePerspective {
                 if (state.mission().team().contains(p.id())) {
                     if (sabotaged[i]) {
                         //spy on mission and spy sabotaged
-                        total *= p.bayesSuspicion() * p.likelihoodToBetray(state, spiesOnMission);
+                        total *= p.bayesSuspicion() * p.likelihoodToBetray(spiesOnMission);
                     } else {
                         //spy on mission but didn't sabotage
-                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(state, spiesOnMission));
+                        total *= p.bayesSuspicion() * (1 - p.likelihoodToBetray(spiesOnMission));
                     }
                 } else {
                     //spy not on mission
@@ -232,9 +266,248 @@ class ResistancePerspective {
         return tmp + sumSabotageCombinations(spies, start + 1, curr, sabotaged);
     }
 
-    @Override
-    public String toString() {
-        return String.format("ResistancePerspective{me=%s, players=%s, team=%s}", me, players, team);
+    public class Player {
+
+        //how much influence this behaviour should have on the spyness - how much this player assisted spies
+        public static final double HELPED_SPY_WEIGHT = 0.25;
+
+        //how much influence this behaviour should have on the spyness - how much this player acted like a spy
+        public static final double BEHAVED_LIKE_SPY_WEIGHT = 0.6;
+
+        //how much influence this behaviour should have on the spyness - how much this player acted like a
+        // resistance member
+        public static final double BEHAVED_LIKE_RESISTANCE_WEIGHT = 0.1;
+
+        //this player's identifier
+        private final char id;
+
+        //friendship values for every other player
+        private final Map<Player, Double> friends;
+
+        //how much this player has assisted the spy team
+        private final Argument helpedSpies;
+
+        //how much this player has been acting like a spy
+        private final Argument behavedLikeSpy;
+
+        //how much this player has been acting like a true resistance member
+        private final Argument behavedLikeResistance;
+
+        //the spy probability calculated via Bayesian inference
+        private double bayesSuspicion;
+
+        /**
+         * Creates a new player, which we are suspicious of.
+         *
+         * @param id the player identifier
+         * @param initialSuspicion how much we suspect this player of being a spy
+         */
+        public Player(char id, double initialSuspicion) {
+            this.id = id;
+            this.friends = new HashMap<Player, Double>();
+            this.helpedSpies = new Argument((double) state.numberOfSpies() / (state.numberOfPlayers() - 1), 1);
+            this.behavedLikeSpy = new Argument(0, 0);
+            this.behavedLikeResistance = new Argument(0, 0);
+            this.bayesSuspicion = initialSuspicion;
+        }
+
+        /**
+         * @return this player's identifier
+         */
+        public char id() {
+            return id;
+        }
+
+        /**
+         * Adds some evidence that this player is friends with another player.
+         *
+         * @param player the player which this player was friendly to
+         * @param value how much weight (usually 1)
+         * @param n how many samples (usually 1)
+         */
+        public void friendship(Player player, double value, int n) {
+            Double current = friendship(player);
+            friends.put(player, 1 - (1 - current) * (1 - value / n));
+        }
+
+        /**
+         * @param player the other player to consider
+         * @return a probability that this player is friends with the other player
+         */
+        public Double friendship(Player player) {
+            Double friendship = friends.get(player);
+            if (friendship == null) {
+                friendship = (double) state.numberOfSpies() / (state.numberOfPlayers() - 1);
+                friends.put(player, friendship);
+            }
+            return friendship;
+        }
+
+        /**
+         * @return a variable holding samples for whether this player seems to be helping spies or not
+         */
+        public Argument helpedSpy() {
+            return helpedSpies;
+        }
+
+        /**
+         * @return a variable holding samples for whether this player is acting like a spy
+         */
+        public Argument behavedLikeSpy() {
+            return behavedLikeSpy;
+        }
+
+        /**
+         * @return a variable holding samples for whether this player is acting like a true resistance member
+         */
+        public Argument behavedLikeResistance() {
+            return behavedLikeResistance;
+        }
+
+        /**
+         * @return the probability that this player is a spy, using Bayesian inference
+         */
+        public double bayesSuspicion() {
+            return bayesSuspicion;
+        }
+
+        /**
+         * @param _bayesSuspicion sets the new probability that this player is a spy
+         */
+        public void bayesSuspicion(double _bayesSuspicion) {
+            //avoid rounding error taking it above 1 or below 0
+            bayesSuspicion = Math.min(Math.max(_bayesSuspicion, 0), 1);
+        }
+
+        /**
+         * Gives the likelihood of this player to betray a mission, given that it is on the team and assuming it is a spy.
+         *
+         * @param spiesOnMission the spies on the mission team (not including those left out of the team)
+         * @return the likelihood that the player will betray the mission
+         */
+        public double likelihoodToBetray(Collection<Player> spiesOnMission) {
+            if (spiesOnMission.size() == 1) return 0.95;
+            return 1.0 / spiesOnMission.size();
+        }
+
+        /**
+         * @return true if and only if this player is definitely a spy, inferred by Bayesian inference
+         */
+        public boolean definitelyASpy() {
+            return bayesSuspicion == 1;
+        }
+
+        /**
+         * @return a heuristic-style estimate of how spy-ish this player is
+         */
+        public double spyness() {
+            //if we know for certain through Bayesian inference, use that
+            if (bayesSuspicion == 0) return 0;
+            if (bayesSuspicion == 1) return 1;
+
+            //otherwise, weight using other suspicion tracking variables
+            double value = bayesSuspicion();
+            value *= ((1 - HELPED_SPY_WEIGHT) + HELPED_SPY_WEIGHT * helpedSpies.value());
+            value *= ((1 - BEHAVED_LIKE_SPY_WEIGHT) + BEHAVED_LIKE_SPY_WEIGHT * behavedLikeSpy.value());
+            value *= (1 - BEHAVED_LIKE_RESISTANCE_WEIGHT * behavedLikeResistance.value());
+            return value;
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        public String toString() {
+            return String.format(
+                    "%c[%s%%]",
+                    id, BigDecimal.valueOf(100 * spyness()).round(new MathContext(4, RoundingMode.HALF_UP)).toEngineeringString()
+            );
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public boolean equals(Object o) {
+            return o instanceof Player && ((Player) o).id() == id();
+        }
+
+        /**
+         * {@inheritDoc}
+         */
+        @Override
+        public int hashCode() {
+            return id();
+        }
+
+        /**
+         * Represents an argument for which evidence can be provided for/against using evidence samples.
+         */
+        public class Argument {
+
+            //generally the number of 'truths' for this argument
+            private double total;
+
+            //the number of times we have checked this argument for the player
+            private int samples;
+
+            /**
+             * Creates a new variable with an initial value and number of samples.
+             *
+             * @param v0 the initial value
+             * @param s0 the initial number of samples
+             */
+            public Argument(double v0, int s0) {
+                total = v0;
+                samples = s0;
+            }
+
+            /**
+             * Adds a piece of evidence using one sample.
+             *
+             * @param value the value to increment by
+             */
+            public void sample(double value) {
+                sample(value, 1);
+            }
+
+            /**
+             * Adds a piece of evidence using one boolean sample - was the argument true/false in this case?
+             *
+             * @param value whether the argument held
+             */
+            public void sample(boolean value) {
+                sample(value ? 1 : 0);
+            }
+
+            /**
+             * @return how often this argument held given the number of times it was true/false, so essentially the
+             *         likelihood that the argument is correct
+             */
+            public double value() {
+                return samples > 0 ? total / samples : 0;
+            }
+
+            /**
+             * {@inheritDoc}
+             */
+            @Override
+            public String toString() {
+                return samples > 0 ? String.format("%.2f%", value()) : "?";
+            }
+
+            /**
+             * Adds a piece of evidence - in s samples, this was true v times.
+             *
+             * @param value the value to increment by
+             * @param samples the number of samples in which this could have occurred
+             */
+            private void sample(double value, int samples) {
+                this.total += value;
+                this.samples += samples;
+            }
+
+        }
+
     }
 
 }

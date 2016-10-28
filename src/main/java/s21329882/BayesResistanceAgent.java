@@ -33,7 +33,7 @@ public class BayesResistanceAgent implements Agent {
     private boolean initialised;
 
     //every combination of players which could make up the spies - maximum (9 choose 4) = 126
-    private Map<Collection<Player>, Double> spyCombinations;
+    private Map<Collection<ResistancePerspective.Player>, Double> spyCombinations;
 
     //holds general game state information, like the current mission etc.
     private GameState state;
@@ -52,8 +52,8 @@ public class BayesResistanceAgent implements Agent {
         if (!initialised) {
             //initialise variables but wait until do_() method to construct spy initialiseSpyCombinations
             state = new GameState(players, spies);
-            perspective = new ResistancePerspective(state, name, players, spies);
-            spyCombinations = new HashMap<Collection<Player>, Double>();
+            perspective = new ResistancePerspective(state, name, players);
+            spyCombinations = new HashMap<Collection<ResistancePerspective.Player>, Double>();
             random = new Random();
         }
 
@@ -80,7 +80,7 @@ public class BayesResistanceAgent implements Agent {
             StringBuilder sb = new StringBuilder();
             sb.append(perspective.me().id());
             Collections.shuffle(perspective.others());
-            for (Player p : perspective.others()) {
+            for (ResistancePerspective.Player p : perspective.others()) {
                 if (sb.length() == number) break;
                 sb.append(p.id());
             }
@@ -88,12 +88,12 @@ public class BayesResistanceAgent implements Agent {
         }
 
         //get the nice players
-        Collection<Player> good = notInMostLikelySpyCombination();
+        Collection<ResistancePerspective.Player> good = notInMostLikelySpyCombination();
 
         //add me + the lowest suspicion players
         StringBuilder sb = new StringBuilder();
         sb.append(perspective.me().id());
-        for (Player p : good) if (sb.length() < number) sb.append(p.id());
+        for (ResistancePerspective.Player p : good) if (sb.length() < number) sb.append(p.id());
 
         //pretty confident this will always hold since number to select is never
         // greater than the number of true resistance agents
@@ -138,9 +138,9 @@ public class BayesResistanceAgent implements Agent {
         }
 
         //otherwise, check that none of the players on the bad combination are in the team
-        Collection<Player> bad = mostLikelySpyCombination();
+        Collection<ResistancePerspective.Player> bad = mostLikelySpyCombination();
         Collection<Character> coll = new ArrayList<Character>();
-        for (Player p : bad)
+        for (ResistancePerspective.Player p : bad)
             coll.add(p.id());
 
         return !intersects(coll, mission.team());
@@ -167,7 +167,7 @@ public class BayesResistanceAgent implements Agent {
         }
 
         for (Character c : state.players()) {
-            Player p = perspective.lookup(c);
+            ResistancePerspective.Player p = perspective.lookup(c);
             //ignore if me
             if (c.equals(perspective.me().id())) continue;
 
@@ -193,10 +193,10 @@ public class BayesResistanceAgent implements Agent {
             }
         }
 
-        for (Player p : perspective.players()) {
+        for (ResistancePerspective.Player p : perspective.players()) {
             //player voted against team when on team - quite resistance-like
             p.behavedLikeResistance().sample(
-                    state.proposedMission().team().contains(p.id()) && !contains(yays, p.id())
+                    state.proposedMission().team().contains(p.id()) && !BayesAgent.contains(yays, p.id())
             );
         }
 
@@ -209,7 +209,7 @@ public class BayesResistanceAgent implements Agent {
      */
     @Override
     public void get_Mission(String mission) {
-        if (same(mission, state.proposedMission().team())) {
+        if (BayesAgent.same(mission, state.proposedMission().team())) {
             state.mission(state.proposedMission());
         } else {
             //mission has been allocated forcefully since too many attempts
@@ -233,12 +233,12 @@ public class BayesResistanceAgent implements Agent {
         state.mission().done(traitors);
 
         if (state.mission().yays() != null) {
-            for (Player player : perspective.players()) {
+            for (ResistancePerspective.Player player : perspective.players()) {
                 if (!player.equals(perspective.me())) {
                     //voted for mission which failed
-                    boolean hmm1 = (contains(state.mission().yays(), player.id()) && traitors > 0);
+                    boolean hmm1 = (BayesAgent.contains(state.mission().yays(), player.id()) && traitors > 0);
                     //voted against mission which succeeded
-                    boolean hmm2 = (!contains(state.mission().yays(), player.id()) && traitors == 0);
+                    boolean hmm2 = (!BayesAgent.contains(state.mission().yays(), player.id()) && traitors == 0);
                     player.helpedSpy().sample(hmm1 || hmm2 ? 1 : 0);
                 }
             }
@@ -256,7 +256,7 @@ public class BayesResistanceAgent implements Agent {
     public String do_Accuse() {
         //accuse those we know are spies with certainty
         StringBuilder sb = new StringBuilder();
-        for (Player p : perspective.players()) {
+        for (ResistancePerspective.Player p : perspective.players()) {
             if (p.definitelyASpy()) {
                 sb.append(p.id());
             }
@@ -272,11 +272,11 @@ public class BayesResistanceAgent implements Agent {
     /**
      * @return the spy combination which has displayed the most spyness
      */
-    private Collection<Player> mostLikelySpyCombination() {
-        Map.Entry<Collection<Player>, Double> max = null;
+    private Collection<ResistancePerspective.Player> mostLikelySpyCombination() {
+        Map.Entry<Collection<ResistancePerspective.Player>, Double> max = null;
 
         //find the maximum entry, with a little bit of randomness thrown in
-        for (Map.Entry<Collection<Player>, Double> entry : spyCombinations.entrySet()) {
+        for (Map.Entry<Collection<ResistancePerspective.Player>, Double> entry : spyCombinations.entrySet()) {
             if (max == null || entry.getValue() * randBetween(0.95, 1.0) > max.getValue()) {
                 max = entry;
             }
@@ -292,22 +292,22 @@ public class BayesResistanceAgent implements Agent {
     /**
      * @return all players not in {@link #mostLikelySpyCombination()}
      */
-    private Collection<Player> notInMostLikelySpyCombination() {
-        List<Player> players = new ArrayList<Player>(perspective.others());
-        Collection<Player> bad = mostLikelySpyCombination();
+    private Collection<ResistancePerspective.Player> notInMostLikelySpyCombination() {
+        List<ResistancePerspective.Player> players = new ArrayList<ResistancePerspective.Player>(perspective.others());
+        Collection<ResistancePerspective.Player> bad = mostLikelySpyCombination();
 
         //remove each player that is in the most suspicious group
         double value = spyCombinations.get(bad);
         if (value > 0) {
-            for (Player p : bad) {
+            for (ResistancePerspective.Player p : bad) {
                 players.remove(p);
             }
         }
 
         //sort by spyness in ascending order
-        Collections.sort(players, new Comparator<Player>() {
+        Collections.sort(players, new Comparator<ResistancePerspective.Player>() {
             @Override
-            public int compare(Player o1, Player o2) {
+            public int compare(ResistancePerspective.Player o1, ResistancePerspective.Player o2) {
                 return (int) Math.signum(o1.spyness() - o2.spyness());
             }
         });
@@ -319,7 +319,7 @@ public class BayesResistanceAgent implements Agent {
      * Adds all possible combinations of spies to the {@link #spyCombinations} collection.
      */
     private void initialiseSpyCombinations() {
-        List<Player> others = perspective.others();
+        List<ResistancePerspective.Player> others = perspective.others();
         initialiseSpyCombinations(state.numberOfSpies(), 0, 0, others, new boolean[others.size()], spyCombinations);
         updateCombinationsSpyness();
     }
@@ -335,11 +335,11 @@ public class BayesResistanceAgent implements Agent {
      * @param map an empty map
      */
     private void initialiseSpyCombinations(
-            int spies, int start, int curr, List<Player> others,
-            boolean[] used, Map<Collection<Player>, Double> map) {
+            int spies, int start, int curr, List<ResistancePerspective.Player> others,
+            boolean[] used, Map<Collection<ResistancePerspective.Player>, Double> map) {
         //base case - add this collection
         if (curr == spies) {
-            Collection<Player> collection = new ArrayList<Player>(spies);
+            Collection<ResistancePerspective.Player> collection = new ArrayList<ResistancePerspective.Player>(spies);
             for (int i = 0; i < used.length; ++i) {
                 if (used[i])
                     collection.add(others.get(i));
@@ -364,13 +364,13 @@ public class BayesResistanceAgent implements Agent {
      */
     private void updateCombinationsSpyness() {
         //need to use iterator object to avoid concurrent modification exception
-        Iterator<Map.Entry<Collection<Player>, Double>> iterator = spyCombinations.entrySet().iterator();
+        Iterator<Map.Entry<Collection<ResistancePerspective.Player>, Double>> iterator = spyCombinations.entrySet().iterator();
         while (iterator.hasNext()) {
-            Map.Entry<Collection<Player>, Double> entry = iterator.next();
+            Map.Entry<Collection<ResistancePerspective.Player>, Double> entry = iterator.next();
 
             //calculate overall spyness of group
             double estimate = 1;
-            for (Player player : entry.getKey()) {
+            for (ResistancePerspective.Player player : entry.getKey()) {
                 estimate *= player.spyness();
             }
 
@@ -387,8 +387,8 @@ public class BayesResistanceAgent implements Agent {
 
                 //weight according to how correlated the friendships are between players in the group
                 double u = 1.0;
-                for (Player player : entry.getKey()) {
-                    for (Player other : entry.getKey()) {
+                for (ResistancePerspective.Player player : entry.getKey()) {
+                    for (ResistancePerspective.Player other : entry.getKey()) {
                         if (!player.equals(other)) {
                             u *= player.friendship(other);
                         }
@@ -398,24 +398,24 @@ public class BayesResistanceAgent implements Agent {
 
                 //weight according to how much members of the group have been helpful to spies
                 u = 1.0;
-                for (Player player : entry.getKey()) {
+                for (ResistancePerspective.Player player : entry.getKey()) {
                     u *= player.helpedSpy().value();
                 }
-                v *= ((1.0 - Player.HELPED_SPY_WEIGHT) + Player.HELPED_SPY_WEIGHT * u);
+                v *= ((1.0 - ResistancePerspective.Player.HELPED_SPY_WEIGHT) + ResistancePerspective.Player.HELPED_SPY_WEIGHT * u);
 
                 //weight according to how much members of the group have behaved like spies
                 u = 1.0;
-                for (Player player : entry.getKey()) {
+                for (ResistancePerspective.Player player : entry.getKey()) {
                     u *= player.behavedLikeSpy().value();
                 }
-                v *= ((1.0 - Player.BEHAVED_LIKE_SPY_WEIGHT) + Player.BEHAVED_LIKE_SPY_WEIGHT * u);
+                v *= ((1.0 - ResistancePerspective.Player.BEHAVED_LIKE_SPY_WEIGHT) + ResistancePerspective.Player.BEHAVED_LIKE_SPY_WEIGHT * u);
 
                 //weight according to how much members of the group have behaved like resistance
                 u = 1.0;
-                for (Player player : entry.getKey()) {
+                for (ResistancePerspective.Player player : entry.getKey()) {
                     u *= player.behavedLikeResistance().value();
                 }
-                v *= (1.0 - Player.BEHAVED_LIKE_RESISTANCE_WEIGHT * u);
+                v *= (1.0 - ResistancePerspective.Player.BEHAVED_LIKE_RESISTANCE_WEIGHT * u);
 
                 //update the value
                 entry.setValue(v);
@@ -442,27 +442,6 @@ public class BayesResistanceAgent implements Agent {
      */
     private double randBetween(double x, double y) {
         return random.nextDouble() * (y - x) + x;
-    }
-
-    /**
-     * @param s a string
-     * @param collection a collection of characters
-     * @return true if the collection of characters and the string contain exactly the same characters
-     */
-    private boolean same(String s, Collection<Character> collection) {
-        for (char c : collection) {
-            if (!contains(s, c)) return false;
-        }
-        return true;
-    }
-
-    /**
-     * @param s a string
-     * @param c a character
-     * @return true if the string contains the character
-     */
-    private boolean contains(String s, char c) {
-        return s.indexOf(c) != -1;
     }
 
 }

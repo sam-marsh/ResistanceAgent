@@ -26,7 +26,7 @@ public class Game{
   private boolean logging = false;
   private boolean started = false;
   private long stopwatch = 0;
-
+  private FileWriter log;
 
   /**
    * Creates an empty game.
@@ -40,9 +40,10 @@ public class Game{
    * Creates an empty game
    * @param fName path to the log file
    * */
-  public Game(String fName){
+  public Game(String fName) throws IOException {
     logFile = new File(fName);
     logging = true;
+    log = new FileWriter(logFile);
     init();
   }
 
@@ -65,13 +66,12 @@ public class Game{
   private void log(String msg){
     if(logging){
       try{
-        FileWriter log = new FileWriter(logFile);
         log.write(msg);
-        log.close();
       }catch(IOException e){e.printStackTrace();}
+    } else {
+      System.out.println(msg);
     }
-    System.out.println(msg);
-  }  
+  }
 
 
   /**
@@ -353,9 +353,10 @@ public class Game{
     }
   }
 
-  public static String tournament(Competitor[] agents, int rounds){
+  public static String tournament(Competitor[] agents, int rounds) throws IOException {
     Random tRand = new Random();
     for(int round = 0; round<rounds; round++){
+      System.out.println("Round " + round + ".");
       Game g = new Game("Round"+round+".txt");
       int playerNum = 5+tRand.nextInt(6);
       for(int i = 0; i<playerNum; i++){
@@ -382,7 +383,8 @@ public class Game{
           g.log(cc.toString());
           }  
         }
-      }    
+      }
+      g.log.close();
     }
     Arrays.sort(agents);
     String ret = 
@@ -413,7 +415,7 @@ public class Game{
       FileWriter fw = new FileWriter(f);
       Competitor[] contenders = {
               new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              //new Competitor(new SearchAgent(), "MCTS", "Sam")
+              new Competitor(new SearchAgent(), "MCTS", "Sam")
       };
       fw.write(tournament(contenders, 10));
       fw.close();
