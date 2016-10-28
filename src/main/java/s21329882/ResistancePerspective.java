@@ -6,7 +6,7 @@ import java.util.*;
  * Author: Sam Marsh
  * Date: 11/10/2016
  */
-public class ResistancePerspective {
+class ResistancePerspective {
 
     private final GameState state;
     private final Player me;
@@ -14,7 +14,7 @@ public class ResistancePerspective {
     private final GameState.Team team;
     private final List<Player> others;
 
-    public ResistancePerspective(GameState _state, String _me, String _players, String _spies) {
+    ResistancePerspective(GameState _state, String _me, String _players, String _spies) {
         state = _state;
         players = new HashMap<Character, Player>();
         team = _spies.contains("?") ? GameState.Team.RESISTANCE : GameState.Team.GOVERNMENT;
@@ -34,7 +34,7 @@ public class ResistancePerspective {
         }
     }
 
-    public List<Player> others() {
+    List<Player> others() {
         return others;
     }
 
@@ -42,7 +42,7 @@ public class ResistancePerspective {
         return state;
     }
 
-    public Player me() {
+    Player me() {
         return me;
     }
 
@@ -54,11 +54,11 @@ public class ResistancePerspective {
         return team;
     }
 
-    public Player lookup(char id) {
+    Player lookup(char id) {
         return players.get(id);
     }
 
-    public void updateSuspicion() {
+    void updateSuspicion() {
         //remove line below - still extremely useful to update probabilities when mission succeeds, since
         // if no sabotages occur it is more likely that there were no spies on the team
         //if (traitors == 0) return;

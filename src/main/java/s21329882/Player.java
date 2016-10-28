@@ -5,62 +5,58 @@ import java.math.MathContext;
 import java.math.RoundingMode;
 import java.util.*;
 
-/**
- * Author: Sam Marsh
- * Date: 11/10/2016
- */
-public class Player {
+class Player {
 
-    private static final double SUPPORT_WEIGHT = 0.25;
-    private static final double SUSPICIOUS_ACTION_WEIGHT = 0.6;
-    private static final double RESISTANCE_ACTION_WEIGHT = 0.1;
+    static final double HELPED_SPY_WEIGHT = 0.25;
+    static final double BEHAVED_LIKE_SPY_WEIGHT = 0.6;
+    static final double BEHAVED_LIKE_RESISTANCE_WEIGHT = 0.1;
 
     private final char id;
-    private final Map<Player, Probability> friends;
-    private final Variable supportSuspect;
-    private final Variable suspiciousActions;
-    private final Variable possibleGoodActions;
+    private final Map<Player, Double> friends;
+    private final Variable helpedSpies;
+    private final Variable behavedLikeSpy;
+    private final Variable behavedLikeResistance;
+    private final int nspies;
+    private final int nplayers;
     private double bayesSuspicion;
 
-    public Player(GameState data, char id, double initialSuspicion) {
+    Player(GameState data, char id, double initialSuspicion) {
         this.id = id;
-        this.friends = new HashMap<Player, Probability>();
-        this.supportSuspect = new Variable((double) data.numberOfSpies() / data.numberOfPlayers(), 1);
-        this.suspiciousActions = new Variable(0, 0);
-        this.possibleGoodActions = new Variable(0, 0);
+        this.friends = new HashMap<Player, Double>();
+        this.nspies = data.numberOfSpies();
+        this.nplayers = data.numberOfPlayers();
+        this.helpedSpies = new Variable((double) nspies / (nplayers - 1), 1);
+        this.behavedLikeSpy = new Variable(0, 0);
+        this.behavedLikeResistance = new Variable(0, 0);
         this.bayesSuspicion = initialSuspicion;
     }
 
-    public Probability friendship(Player player) {
-        Probability friendship = friends.get(player);
-        if (friendship == null) {
-            friendship = new Probability(0.4);
-            friends.put(player, friendship);
-        }
-        return friendship;
+    void friendship(Player player, double value, int n) {
+        Double current = friendship(player);
+        friends.put(player, 1 - (1 - current) * (1 - value / n));
     }
 
-    public Variable getSupportSuspect() {
-        return supportSuspect;
+    Variable helpedSpy() {
+        return helpedSpies;
     }
 
-    public Variable suspiciousActions() {
-        return suspiciousActions;
+    Variable behavedLikeSpy() {
+        return behavedLikeSpy;
     }
 
-    public Variable getPossibleGoodActions() {
-        return possibleGoodActions;
+    Variable behavedLikeResistance() {
+        return behavedLikeResistance;
     }
 
-    public char id() {
+    char id() {
         return id;
     }
 
-    public double bayesSuspicion() {
+    double bayesSuspicion() {
         return bayesSuspicion;
     }
 
-    public void bayesSuspicion(double _bayesSuspicion) {
+    void bayesSuspicion(double _bayesSuspicion) {
         //avoid rounding error taking it above 1 or below 0
         bayesSuspicion = Math.min(Math.max(_bayesSuspicion, 0), 1);
     }
@@ -72,24 +68,33 @@ public class Player {
      * @param spiesOnMission the spies on the mission team (not including those left out of the team)
      * @return the likelihood that the player will betray the mission
      */
-    public double likelihoodToBetray(GameState state, Collection<Player> spiesOnMission) {
+    double likelihoodToBetray(GameState state, Collection<Player> spiesOnMission) {
         if (spiesOnMission.size() == 1) return 0.95;
         return 1.0 / spiesOnMission.size();
     }
 
-    public boolean definitelyASpy() {
+    boolean definitelyASpy() {
         return bayesSuspicion == 1;
     }
 
-    public double spyness() {
+    double spyness() {
         if (bayesSuspicion == 0) return 0;
         if (bayesSuspicion == 1) return 1;
 
         double value = bayesSuspicion();
-        value *= ((1 - SUPPORT_WEIGHT) + SUPPORT_WEIGHT * supportSuspect.estimate());
-        value *= ((1 - SUSPICIOUS_ACTION_WEIGHT) + SUSPICIOUS_ACTION_WEIGHT * suspiciousActions.estimate());
-        value *= (1 - RESISTANCE_ACTION_WEIGHT * possibleGoodActions.estimate());
+        value *= ((1 - HELPED_SPY_WEIGHT) + HELPED_SPY_WEIGHT * helpedSpies.value());
+        value *= ((1 - BEHAVED_LIKE_SPY_WEIGHT) + BEHAVED_LIKE_SPY_WEIGHT * behavedLikeSpy.value());
+        value *= (1 - BEHAVED_LIKE_RESISTANCE_WEIGHT * behavedLikeResistance.value());
         return value;
+    }
+
+    Double friendship(Player player) {
+        Double friendship = friends.get(player);
+        if (friendship == null) {
+            friendship = (double) nspies / (nplayers - 1);
+            friends.put(player, friendship);
+        }
+        return friendship;
     }
 
     public String toString() {
@@ -107,6 +112,40 @@ public class Player {
     @Override
     public int hashCode() {
         return id();
+    }
+
+    class Variable {
+
+        private double total;
+        private int samples;
+
+        Variable(double v0, int s0) {
+            total = v0;
+            samples = s0;
+        }
+
+        void sample(double value) {
+            sample(value, 1);
+        }
+
+        void sample(boolean value) {
+            sample(value ? 1 : 0);
+        }
+
+        double value() {
+            return samples > 0 ? total / samples : 0;
+        }
+
+        private void sample(double value, int samples) {
+            this.total += value;
+            this.samples += samples;
+        }
+
+        @Override
+        public String toString() {
+            return samples > 0 ? String.format("%.2f%", value()) : "?";
+        }
+
     }
 
 }

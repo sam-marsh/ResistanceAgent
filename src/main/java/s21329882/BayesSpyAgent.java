@@ -38,6 +38,8 @@ public class BayesSpyAgent implements Agent {
     //which members are spies
     private String spies;
 
+    //threading for updating resistance members bayesian probabilities in parallel - within game rules, since
+    // only used while our do_() method is being called and not any other time
     private ExecutorService service;
 
     /**
@@ -181,7 +183,7 @@ public class BayesSpyAgent implements Agent {
 
         //now - simulate that every spy on the team will sabotage (worst case in terms of suspicion)
         int n = numberOfSpiesOnMission(state.mission());
-        state.mission().done(1);
+        state.mission().done(n);
 
         //after the below, this will hold the average suspicion for each spy before
         Map<Character, Double> suspicion = new HashMap<Character, Double>(spies.length());

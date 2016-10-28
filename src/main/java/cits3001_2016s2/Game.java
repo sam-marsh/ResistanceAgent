@@ -413,7 +413,7 @@ public class Game{
       FileWriter fw = new FileWriter(f);
       Competitor[] contenders = {
               new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              new Competitor(new SearchAgent(), "MCTS", "Sam")
+              //new Competitor(new SearchAgent(), "MCTS", "Sam")
       };
       fw.write(tournament(contenders, 10));
       fw.close();
