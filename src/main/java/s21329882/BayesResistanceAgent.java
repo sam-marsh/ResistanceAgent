@@ -22,8 +22,11 @@ import java.util.*;
  */
 public class BayesResistanceAgent implements Agent {
 
+    //once a group's suspicion grows above this value, don't decrease it - they're the spies...
     private static final double SUSPICION_CUTOFF = 0.99;
 
+    //the weighting to assign when considering how friendly the members of each possible spy combination
+    // have been to each other
     private static final double FRIENDSHIP_WEIGHT = 0.5;
 
     //used to track whether this is the first time that get_status has been called
@@ -53,6 +56,7 @@ public class BayesResistanceAgent implements Agent {
             spyCombinations = new HashMap<Collection<Player>, Double>();
             random = new Random();
         }
+
         state.missionNumber(mission);
         state.failures(failures);
 
