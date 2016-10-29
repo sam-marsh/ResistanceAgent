@@ -35,7 +35,6 @@ public class SearchSpyAgent implements Agent {
     public void get_status(String name, String players, String spies, int mission, int failures) {
         if (!initialised) {
             state = new GameState(players, spies, name.charAt(0));
-            state.phase(GameState.Phase.NOMINATION);
             searcher = new MCTS(state);
             initialised = true;
         }
@@ -60,7 +59,6 @@ public class SearchSpyAgent implements Agent {
     public String do_Nominate(int number) {
         //update game state
         state.phase(GameState.Phase.NOMINATION);
-        state.currentPlayer(state.players().indexOf(state.me()));
         state.currentLeader(state.players().indexOf(state.me()));
 
         //start the search

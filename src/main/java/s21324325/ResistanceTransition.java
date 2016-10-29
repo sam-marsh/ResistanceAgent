@@ -22,6 +22,20 @@ public abstract class ResistanceTransition implements MCTS.Transition {
             return "Nomination[" + selection + "]";
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Nomination that = (Nomination) o;
+            return selection != null ? selection.equals(that.selection) : that.selection == null;
+
+        }
+
+        @Override
+        public int hashCode() {
+            return selection != null ? selection.hashCode() : 0;
+        }
+
     }
 
     public static class Sabotage extends ResistanceTransition {
@@ -41,6 +55,20 @@ public abstract class ResistanceTransition implements MCTS.Transition {
             return "Sabotage[" + Boolean.toString(sabotage) + "]";
         }
 
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Sabotage sabotage1 = (Sabotage) o;
+            return sabotage == sabotage1.sabotage;
+
+        }
+
+        @Override
+        public int hashCode() {
+            return (sabotage ? 1 : 0);
+        }
+
     }
 
     public static class Vote extends ResistanceTransition {
@@ -58,6 +86,20 @@ public abstract class ResistanceTransition implements MCTS.Transition {
         @Override
         public String toString() {
             return "Vote[" + Boolean.toString(yes) + "]";
+        }
+
+        @Override
+        public boolean equals(Object o) {
+            if (this == o) return true;
+            if (o == null || getClass() != o.getClass()) return false;
+            Vote vote = (Vote) o;
+            return yes == vote.yes;
+
+        }
+
+        @Override
+        public int hashCode() {
+            return (yes ? 1 : 0);
         }
 
     }

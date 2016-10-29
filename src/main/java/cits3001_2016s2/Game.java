@@ -417,9 +417,9 @@ public class Game{
     Game g = new Game();
     g.stopwatchOn();g.addPlayer(new SearchAgent(), 5);g.stopwatchOff(1000,'A');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'C');
-    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'D');
-    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'E');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.setup();
     g.play();
 

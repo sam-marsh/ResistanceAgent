@@ -272,7 +272,7 @@ public class ResistancePerspective {
         public static final double HELPED_SPY_WEIGHT = 0.25;
 
         //how much influence this behaviour should have on the spyness - how much this player acted like a spy
-        public static final double BEHAVED_LIKE_SPY_WEIGHT = 0.6;
+        public static final double BEHAVED_LIKE_SPY_WEIGHT = 0.5;
 
         //how much influence this behaviour should have on the spyness - how much this player acted like a
         // resistance member
@@ -392,13 +392,6 @@ public class ResistancePerspective {
         public double likelihoodToBetray(Collection<Player> spiesOnMission) {
             if (spiesOnMission.size() == 1) return 0.95;
             return 1.0 / spiesOnMission.size();
-        }
-
-        /**
-         * @return true if and only if this player is definitely a spy, inferred by Bayesian inference
-         */
-        public boolean definitelyASpy() {
-            return bayesSuspicion == 1;
         }
 
         /**

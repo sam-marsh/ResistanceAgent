@@ -10,12 +10,13 @@ import java.util.concurrent.Future;
  */
 public class MCTS {
 
-    /**
-     * The selection expand for the root child. For The Resistance, {@link SelectionPolicy#MAX_CHILD} works much
-     * better than {@link SelectionPolicy#ROBUST_CHILD} (from experimentation).
-     * TODO check this after integrated opponent model
-     */
-    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
+    @Override
+    public String toString() {
+        for (Node node : root.children) {
+            System.out.println(node.transition + " " + node.games);
+        }
+        return null;
+    }
 
     /**
      * The random number generator used for random simulations, etc.
@@ -28,8 +29,8 @@ public class MCTS {
     private final ExecutorService executor;
 
     /**
-     * Whether a search is in progress. Volatile since it needs to be accessed from two threads.
-     * TODO check whether anything else needs to be done apart from making this volatile (???)
+     * Whether a search is in progress. Volatile since change needs to be immediately visible when modified from other
+     * thread.
      */
     private volatile boolean searching;
 
@@ -68,7 +69,6 @@ public class MCTS {
      */
     public void state(State state) throws IllegalStateException {
         if (searching || (future != null && !future.isDone())) {
-
             future.cancel(true);
         }
         this.state = state.copy();
@@ -83,13 +83,10 @@ public class MCTS {
             @Override
             public void run() {
                 searching = true;
-                int count = 0;
                 //continue to sample until the user tells us to stop
                 while (searching) {
-                    ++count;
                     select(state.copy(), root);
                 }
-                System.out.println(count);
             }
         });
     }
@@ -108,7 +105,7 @@ public class MCTS {
             throw new IllegalStateException(e);
         }
         //get the best child according to the root child selection expand
-        return POLICY.choice(root).transition;
+        return choice(root).transition;
     }
 
     /**
@@ -153,15 +150,26 @@ public class MCTS {
                 state.transition(child.transition);
                 return new Result(state, child);
             } else {
-                //visited all children of this node: so pick the best one
-                List<Node> best = findChildren(node);
-                if (best.isEmpty()) {
-                    //no choices at all - return what was passed in
-                    return new Result(state, node);
+                if (state.shouldUseWeighted()) {
+                    Transition transition = randomChoice(state.weightedTransitions());
+                    state.transition(transition);
+                    for (Node child : node.children) {
+                        if (child.transition.equals(transition)) {
+                            node = child;
+                            break;
+                        }
+                    }
+                } else {
+                    //visited all children of this node: so pick the best one
+                    List<Node> best = findChildren(node);
+                    if (best.isEmpty()) {
+                        //no choices at all - return what was passed in
+                        return new Result(state, node);
+                    }
+                    node = randomChoice(best);
+                    //change state based on this node's transition
+                    state.transition(node.transition);
                 }
-                node = randomChoice(best);
-                //change state based on this node's transition
-                state.transition(node.transition);
             }
         }
         return new Result(state, node);
@@ -224,49 +232,19 @@ public class MCTS {
     }
 
     /**
-     * The selection expand for the root children.
+     * Chooses the most robust child as per MCTS algorithm specification. That is, the child node which has been visited
+     * most.
+     *
+     * @param node the node for which the best child node needs to be picked
+     * @return the best child node
      */
-    private enum SelectionPolicy {
-
-        /**
-         * Take the node with the highest score.
-         */
-        MAX_CHILD {
-            @Override
-            public Node choice(Node node) {
-                int max = Integer.MIN_VALUE;
-                List<Node> list = new ArrayList<Node>();
-                for (Node child : node.children) {
-                    max = updateMaximum(child, list, child.score[node.player], max);
-                }
-                return randomChoice(list);
-            }
-        },
-
-        /**
-         * Take the node with the highest visit count.
-         */
-        ROBUST_CHILD {
-            @Override
-            public Node choice(Node node) {
-                int max = Integer.MIN_VALUE;
-                List<Node> list = new ArrayList<Node>();
-                for (Node child : node.children) {
-                    max = updateMaximum(child, list, child.games, max);
-                }
-                return randomChoice(list);
-
-            }
-        };
-
-        /**
-         * Given a node, chooses a child node based on this expand.
-         *
-         * @param node the node to randomChoice children from
-         * @return the 'best' child according to the expand
-         */
-        public abstract Node choice(Node node);
-
+    private Node choice(Node node) {
+        int max = Integer.MIN_VALUE;
+        List<Node> list = new ArrayList<Node>();
+        for (Node child : node.children) {
+            max = updateMaximum(child, list, child.games, max);
+        }
+        return randomChoice(list);
     }
 
     /**
@@ -438,6 +416,8 @@ public class MCTS {
          * @return the scores for each player (index 0 holds score for player 0, etc)
          */
         int[] scores();
+
+        boolean shouldUseWeighted();
 
     }
 

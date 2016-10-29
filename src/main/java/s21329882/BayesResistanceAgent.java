@@ -40,6 +40,8 @@ public class BayesResistanceAgent implements Agent {
     //used for a bit of randomness in selecting teams
     private Random random;
 
+    private int nominationAttempt;
+
     /**
      * {@inheritDoc}
      */
@@ -103,6 +105,7 @@ public class BayesResistanceAgent implements Agent {
      */
     @Override
     public void get_ProposedMission(String leader, String mission) {
+        ++nominationAttempt;
         state.proposedMission(new GameState.Mission(leader, mission));
 
         //suspicious if a leader doesn't put him/herself on their own team
@@ -194,6 +197,18 @@ public class BayesResistanceAgent implements Agent {
             p.behavedLikeResistance().sample(
                     state.proposedMission().team().contains(p.id()) && !BayesAgent.contains(yays, p.id())
             );
+            //player voted no to the very first nomination - this might mean we picked a team with no
+            // spies and they don't want that
+            p.behavedLikeSpy().sample(
+                    state.round() == 1 && nominationAttempt == 1 && !BayesAgent.contains(yays, p.id())
+            );
+            //we have a team that requires the same number of people as the number of resistance members - this player
+            // is not in the team and still voted yes... which they should certainly not do if they're a resistance member
+            p.behavedLikeSpy().sample(
+                    state.proposedMission().team().size() == (state.numberOfPlayers() - state.numberOfSpies()) &&
+                            BayesAgent.contains(yays, p.id()) &&
+                            !state.proposedMission().team().contains(p.id())
+            );
         }
 
         //adjust scores based on new information
@@ -205,6 +220,7 @@ public class BayesResistanceAgent implements Agent {
      */
     @Override
     public void get_Mission(String mission) {
+        nominationAttempt = 0;
         if (BayesAgent.same(mission, state.proposedMission().team())) {
             state.mission(state.proposedMission());
         } else {

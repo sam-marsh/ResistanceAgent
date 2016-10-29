@@ -552,6 +552,11 @@ public class GameState implements MCTS.State {
         return scores;
     }
 
+    @Override
+    public boolean shouldUseWeighted() {
+        return contains(spies, players.charAt(phase == Phase.NOMINATION ? currentLeader : currentPlayer));
+    }
+
     /**
      * {@inheritDoc}
      */
