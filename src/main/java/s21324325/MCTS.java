@@ -15,7 +15,7 @@ public class MCTS {
      * better than {@link SelectionPolicy#ROBUST_CHILD} (from experimentation).
      * TODO check this after integrated opponent model
      */
-    private static final SelectionPolicy POLICY = SelectionPolicy.MAX_CHILD;
+    private static final SelectionPolicy POLICY = SelectionPolicy.ROBUST_CHILD;
 
     /**
      * The random number generator used for random simulations, etc.
@@ -83,10 +83,13 @@ public class MCTS {
             @Override
             public void run() {
                 searching = true;
+                int count = 0;
                 //continue to sample until the user tells us to stop
                 while (searching) {
+                    ++count;
                     select(state.copy(), root);
                 }
+                System.out.println(count);
             }
         });
     }
@@ -403,6 +406,10 @@ public class MCTS {
          */
         List<Transition> transitions();
 
+        /**
+         * @return the transitions possible from this state, weighted by their probability of being chosen by a
+         *         typical player (requires opponent model)
+         */
         Map<Transition, Double> weightedTransitions();
 
         /**

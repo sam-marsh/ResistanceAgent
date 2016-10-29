@@ -149,11 +149,13 @@ public class GameState implements MCTS.State {
      * Shifts to the next leader.
      */
     private void nextLeader() {
-        currentLeader = (currentLeader + 1) % numberOfPlayers();
+        currentLeader = after(currentLeader);
     }
 
     void currentLeader(int leader) {
         this.currentLeader = leader;
+        this.currentPlayer = leader;
+        this.startPlayer = leader;
     }
 
     /**
@@ -176,7 +178,7 @@ public class GameState implements MCTS.State {
      * @return the number of successful sabotages
      */
     private int resistancePoints() {
-        return round - failures - 1; //TODO check for off-by-one error
+        return round - failures - 1;
     }
 
     /**
@@ -201,13 +203,6 @@ public class GameState implements MCTS.State {
      */
     void round(int round) {
         this.round = round;
-    }
-
-    /**
-     * @return the number of players
-     */
-    private int numberOfPlayers() {
-        return players.length();
     }
 
     /**
@@ -340,15 +335,19 @@ public class GameState implements MCTS.State {
 
         switch (phase) {
             case NOMINATION: {
-                if (me == players.charAt(currentLeader) || contains(spies, players.charAt(currentLeader))) {
+                if (contains(spies, players.charAt(currentLeader))) {
                     //if i am the current player or is another spy, add each transition with equal probability
-                    for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
-                        transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                    for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
+                        if (contains(s, players.charAt(currentLeader))) {
+                            transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                        }
                     }
                 } else {
+                    //weight transitions such that resistance members are less likely to nominate teams which they think
+                    // are likely to contain spies
                     Perspective perspective = map.get(players.charAt(currentLeader));
                     List<Map.Entry<String, Double>> list = new ArrayList<Map.Entry<String, Double>>();
-                    for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
+                    for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
                         if (contains(s, players.charAt(currentLeader))) {
                             double suspicion = 0;
                             for (char c : s.toCharArray()) {
@@ -364,10 +363,15 @@ public class GameState implements MCTS.State {
                             return (int) Math.signum(o2.getValue() - o1.getValue());
                         }
                     });
-                    //weight transitions such that resistance members are less likely to nominate teams which they think
-                    // are likely to contain spies
+                    double last = list.get(0).getValue();
+                    int index = 1;
                     for (int i = 0; i < list.size(); ++i) {
-                        transitions.put(new ResistanceTransition.Nomination(list.get(i).getKey()), (double) (i + 1) / list.size());
+                        String nomination = list.get(i).getKey();
+                        double suspicion = list.get(i).getValue();
+                        if (suspicion != last) {
+                            ++index;
+                        }
+                        transitions.put(new ResistanceTransition.Nomination(nomination), (double) index / list.size());
                     }
                 }
                 return transitions;
@@ -381,21 +385,28 @@ public class GameState implements MCTS.State {
                 return transitions;
             }
             case VOTING: {
-                if (me == players.charAt(currentPlayer) || contains(spies, players.charAt(currentPlayer))) {
+                if (currentPlayer == currentLeader) {
+                    transitions.put(new ResistanceTransition.Vote(true), 1.0);
+                    return transitions;
+                }
+                if (contains(spies, players.charAt(currentPlayer))) {
                     //me or another spy, so add each choice with equal weight
                     transitions.put(new ResistanceTransition.Vote(true), 1.0);
                     if (currentLeader != currentPlayer)
                         transitions.put(new ResistanceTransition.Vote(false), 1.0);
                 } else {
                     Perspective perspective = map.get(players.charAt(currentPlayer));
+
+                    //weight transitions such that resistance members are less likely to vote for teams which they
+                    // think are likely to contain spies
+
                     double suspicion = 0;
                     for (char c : mission.toCharArray()) {
                         suspicion += perspective.lookup(c);
                     }
-                    //weight transitions such that resistance members are less likely to vote for teams which they
-                    // think are likely to contain spies
-                    transitions.put(new ResistanceTransition.Vote(true), (mission.length() - suspicion + 1) / mission.length());
-                    transitions.put(new ResistanceTransition.Vote(false), (suspicion + 1) / mission.length());
+
+                    transitions.put(new ResistanceTransition.Vote(true), mission.length() - suspicion);
+                    transitions.put(new ResistanceTransition.Vote(false), suspicion);
                 }
                 return transitions;
             }
@@ -414,8 +425,10 @@ public class GameState implements MCTS.State {
         switch (phase) {
             case NOMINATION: {
                 //add every possible nomination
-                for (String s : combinations(players, MISSION_NUMBERS[numberOfPlayers() - 5][round - 1])) {
-                    set.add(new ResistanceTransition.Nomination(s));
+                for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
+                    if (contains(s, players.charAt(currentLeader))) {
+                        set.add(new ResistanceTransition.Nomination(s));
+                    }
                 }
                 return set;
             }
@@ -429,9 +442,9 @@ public class GameState implements MCTS.State {
                 return set;
             }
             case VOTING: {
-                //can vote true or false in all cases
                 set.add(new ResistanceTransition.Vote(true));
-                set.add(new ResistanceTransition.Vote(false));
+                if (currentPlayer != currentLeader)
+                    set.add(new ResistanceTransition.Vote(false));
                 return set;
             }
         }
@@ -449,7 +462,6 @@ public class GameState implements MCTS.State {
             mission = ((ResistanceTransition.Nomination) transition).selection();
             phase = Phase.VOTING;
             votes = 0;
-            currentLeader = after(currentLeader);
             startPlayer = players.indexOf(me);
             currentPlayer = players.indexOf(me);
         } else if (transition instanceof ResistanceTransition.Vote) {
@@ -483,7 +495,7 @@ public class GameState implements MCTS.State {
                 //mission done - move to the next phase
                 startPlayer = players.indexOf(me);
                 currentPlayer = players.indexOf(me);
-                if (traitors != 0 && (traitors != 1 || round != 4 || numberOfPlayers() < 7)) {
+                if (traitors != 0 && (traitors != 1 || round != 4 || numPlayers() < 7)) {
                     failures++;
                 }
                 //update perspectives
@@ -493,6 +505,7 @@ public class GameState implements MCTS.State {
                 nominationAttempt = 1;
                 votes = 0;
                 round++;
+                nextLeader();
             }
         }
     }
@@ -526,7 +539,7 @@ public class GameState implements MCTS.State {
      */
     @Override
     public int[] scores() {
-        int[] scores = new int[numberOfPlayers()];
+        int[] scores = new int[numPlayers()];
         for (int i = 0; i < scores.length; ++i) {
             if (contains(spies, players.charAt(i))) {
                 //player has won if three or more sabotages

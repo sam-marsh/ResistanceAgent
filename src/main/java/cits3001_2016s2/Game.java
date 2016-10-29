@@ -2,6 +2,7 @@ package cits3001_2016s2;
 
 import s21324325.SearchAgent;
 import s21329882.BayesAgent;
+import s21329882.BayesSpyAgent;
 
 import java.util.*;
 import java.io.*;
@@ -41,9 +42,9 @@ public class Game{
    * @param fName path to the log file
    * */
   public Game(String fName) throws IOException {
-    logFile = new File(fName);
+    //logFile = new File(fName);
     logging = true;
-    log = new FileWriter(logFile);
+//    log = new FileWriter(logFile);
     init();
   }
 
@@ -65,6 +66,7 @@ public class Game{
    * */
   private void log(String msg){
     if(logging){
+      if (true) return;
       try{
         log.write(msg);
       }catch(IOException e){e.printStackTrace();}
@@ -78,12 +80,14 @@ public class Game{
    * Adds a player to a game. Once a player is added they cannot be removed
    * @param a the agent to be added
    * */
-  public char addPlayer(Agent a){
+  public char addPlayer(Agent a, int n){
     if(numPlayers > 9) throw new RuntimeException("Too many players");
     else if(started) throw new RuntimeException("Game already underway");
     else{
       Character name = (char)(65+numPlayers++);
       players.put(name, a);
+      if (spies.size() < spyNum[n - 5])
+        spies.add(name);
       log("Player "+name+" added.");
       return name;
     }
@@ -97,13 +101,15 @@ public class Game{
     if(numPlayers < 5) throw new RuntimeException("Too few players");
     else if(started) throw new RuntimeException("Game already underway");
     else{
+      /*
       for(int i = 0; i<spyNum[numPlayers-5]; i++){
         char spy = ' ';
         while(spy==' ' || spies.contains(spy)){
           spy = (char)(65+rand.nextInt(numPlayers));
         }
         spies.add(spy);
-      }
+      }*/
+
       for(Character c: players.keySet())playerString+=c;
       for(Character c: spies){spyString+=c; resString+='?';}
       char[] pArr = playerString.toCharArray();
@@ -356,14 +362,23 @@ public class Game{
   public static String tournament(Competitor[] agents, int rounds) throws IOException {
     Random tRand = new Random();
     for(int round = 0; round<rounds; round++){
-      System.out.println("Round " + round + ".");
+      if (round % 50 == 0) System.out.println("Round " + round + ".");
       Game g = new Game("Round"+round+".txt");
-      int playerNum = 5+tRand.nextInt(6);
+      int playerNum = 10;//+tRand.nextInt(6);
+      for (int i = 0; i < spyNum[playerNum - 5]; ++i) {
+        g.addPlayer(agents[1].getAgent(), playerNum);
+      }
+      g.addPlayer(agents[0].getAgent(), playerNum);
+      while (g.numPlayers < playerNum)
+        g.addPlayer(agents[1].getAgent(), playerNum);
+
+      /*
       for(int i = 0; i<playerNum; i++){
         int index = tRand.nextInt(agents.length);
         g.stopwatchOn();char name = g.addPlayer(agents[index].getAgent());g.stopwatchOff(1000,name);
         g.log("Player "+ agents[index].getName()+" from "+agents[index].getAuthors()+" is "+name);
       }
+      */
       g.setup();
       int fails = g.play();
       int i = 0;
@@ -384,7 +399,7 @@ public class Game{
           }  
         }
       }
-      g.log.close();
+      //g.log.close();
     }
     Arrays.sort(agents);
     String ret = 
@@ -399,28 +414,28 @@ public class Game{
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
-    /* Run a single game
     Game g = new Game();
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'A');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'C');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'D');
-    g.stopwatchOn();g.addPlayer(new RandomAgent());g.stopwatchOff(1000,'E');
+    g.stopwatchOn();g.addPlayer(new SearchAgent(), 5);g.stopwatchOff(1000,'A');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'C');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'D');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'E');
     g.setup();
     g.play();
-    */
-    /*Run a tournament*/
+
+    /*Run a tournament
     try{
       File f = new File("Results.html");
       FileWriter fw = new FileWriter(f);
       Competitor[] contenders = {
               new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              new Competitor(new SearchAgent(), "MCTS", "Sam")
+              new Competitor(new SearchAgent(), "Random", "Tim")
+              //new Competitor(new SearchAgent(), "MCTS", "Sam"),
       };
-      fw.write(tournament(contenders, 10));
+      fw.write(tournament(contenders, 1));
       fw.close();
     }
-    catch(IOException e){System.out.println("IO fail");}
+    catch(IOException e){System.out.println("IO fail");}*/
   }
 
 }  

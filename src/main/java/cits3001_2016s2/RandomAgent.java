@@ -90,7 +90,7 @@ public class RandomAgent implements Agent{
    * @return true if agent betrays, false otherwise
    **/
   public boolean do_Betray(){
-    return (spy?random.nextInt(2)!=0:false);
+    return spy;
   }
 
   /**

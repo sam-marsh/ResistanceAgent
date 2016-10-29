@@ -250,13 +250,10 @@ public class BayesResistanceAgent implements Agent {
      */
     @Override
     public String do_Accuse() {
-        //accuse those we know are spies with certainty
+        Collection<ResistancePerspective.Player> spies = mostLikelySpyCombination();
         StringBuilder sb = new StringBuilder();
-        for (ResistancePerspective.Player p : perspective.players()) {
-            if (p.definitelyASpy()) {
-                sb.append(p.id());
-            }
-        }
+        for (ResistancePerspective.Player player : spies)
+            sb.append(player.id());
         return sb.toString();
     }
 
@@ -379,7 +376,7 @@ public class BayesResistanceAgent implements Agent {
 
             //don't change suspicion if we exceeds a certain value
             if (estimate < SUSPICION_CUTOFF) {
-                double v = estimate;
+                double v = 1.0;
 
                 //weight according to how correlated the friendships are between players in the group
                 double u = 1.0;
@@ -412,6 +409,8 @@ public class BayesResistanceAgent implements Agent {
                     u *= player.behavedLikeResistance().value();
                 }
                 v *= (1.0 - ResistancePerspective.Player.BEHAVED_LIKE_RESISTANCE_WEIGHT * u);
+
+                v *= 0.4 + 0.6 * estimate; //TODO
 
                 //update the value
                 entry.setValue(v);
