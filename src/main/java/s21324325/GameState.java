@@ -339,7 +339,13 @@ public class GameState implements MCTS.State {
                     //if i am the current player or is another spy, add each transition with equal probability
                     for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
                         if (contains(s, players.charAt(currentLeader))) {
-                            transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                            if (contains(spies, players.charAt(currentLeader))) {
+                                if (numSpies(s) <= numSabotagesRequiredForPoint()) {
+                                    transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                                }
+                            } else {
+                                transitions.put(new ResistanceTransition.Nomination(s), 1.0);
+                            }
                         }
                     }
                 } else {
@@ -415,6 +421,19 @@ public class GameState implements MCTS.State {
         throw new AssertionError();
     }
 
+    private int numSpies(String mission) {
+        int count = 0;
+        for (char c : mission.toCharArray()) {
+            if (contains(spies, c))
+                ++count;
+        }
+        return count;
+    }
+
+    private int numSabotagesRequiredForPoint() {
+        return round == 4 && numPlayers() >= 7 ? 2 : 1;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -427,7 +446,13 @@ public class GameState implements MCTS.State {
                 //add every possible nomination
                 for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
                     if (contains(s, players.charAt(currentLeader))) {
-                        set.add(new ResistanceTransition.Nomination(s));
+                        if (contains(spies, players.charAt(currentLeader))) {
+                             if (numSpies(s) <= numSabotagesRequiredForPoint()) {
+                                 set.add(new ResistanceTransition.Nomination(s));
+                             }
+                        } else {
+                            set.add(new ResistanceTransition.Nomination(s));
+                        }
                     }
                 }
                 return set;
@@ -510,6 +535,13 @@ public class GameState implements MCTS.State {
         }
     }
 
+    @Override
+    public MCTS.State randomise() {
+        GameState state = (GameState) copy();
+        state.spies =
+        return null;
+    }
+
     /**
      * {@inheritDoc}
      */
@@ -550,11 +582,6 @@ public class GameState implements MCTS.State {
             }
         }
         return scores;
-    }
-
-    @Override
-    public boolean shouldUseWeighted() {
-        return contains(spies, players.charAt(phase == Phase.NOMINATION ? currentLeader : currentPlayer));
     }
 
     /**

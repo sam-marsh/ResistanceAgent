@@ -10,14 +10,6 @@ import java.util.concurrent.Future;
  */
 public class MCTS {
 
-    @Override
-    public String toString() {
-        for (Node node : root.children) {
-            System.out.println(node.transition + " " + node.games);
-        }
-        return null;
-    }
-
     /**
      * The random number generator used for random simulations, etc.
      */
@@ -150,26 +142,15 @@ public class MCTS {
                 state.transition(child.transition);
                 return new Result(state, child);
             } else {
-                if (state.shouldUseWeighted()) {
-                    Transition transition = randomChoice(state.weightedTransitions());
-                    state.transition(transition);
-                    for (Node child : node.children) {
-                        if (child.transition.equals(transition)) {
-                            node = child;
-                            break;
-                        }
-                    }
-                } else {
-                    //visited all children of this node: so pick the best one
-                    List<Node> best = findChildren(node);
-                    if (best.isEmpty()) {
-                        //no choices at all - return what was passed in
-                        return new Result(state, node);
-                    }
-                    node = randomChoice(best);
-                    //change state based on this node's transition
-                    state.transition(node.transition);
+                //visited all children of this node: so pick the best one
+                List<Node> best = findChildren(node);
+                if (best.isEmpty()) {
+                    //no choices at all - return what was passed in
+                    return new Result(state, node);
                 }
+                node = randomChoice(best);
+                //change state based on this node's transition
+                state.transition(node.transition);
             }
         }
         return new Result(state, node);
@@ -397,6 +378,8 @@ public class MCTS {
          */
         void transition(Transition transition);
 
+        State randomise();
+
         /**
          * @return whether the game is over
          */
@@ -416,8 +399,6 @@ public class MCTS {
          * @return the scores for each player (index 0 holds score for player 0, etc)
          */
         int[] scores();
-
-        boolean shouldUseWeighted();
 
     }
 
