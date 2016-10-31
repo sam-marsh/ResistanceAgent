@@ -392,7 +392,7 @@ public class BayesResistanceAgent implements Agent {
 
             //don't change suspicion if we exceeds a certain value
             if (estimate < SUSPICION_CUTOFF) {
-                double v = 1.0;
+                double v = estimate;
 
                 //weight according to how correlated the friendships are between players in the group
                 double u = 1.0;
@@ -425,8 +425,6 @@ public class BayesResistanceAgent implements Agent {
                     u *= player.behavedLikeResistance().value();
                 }
                 v *= (1.0 - ResistancePerspective.Player.BEHAVED_LIKE_RESISTANCE_WEIGHT * u);
-
-                v *= 0.4 + 0.6 * estimate; //TODO
 
                 //update the value
                 entry.setValue(v);

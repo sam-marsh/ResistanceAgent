@@ -103,7 +103,7 @@ public class GameState implements MCTS.State {
      * @param spies the spies
      * @param me my character identifier
      */
-    GameState(String players, String spies, char me) {
+    public GameState(String players, String spies, char me) {
         this.players = players;
         this.spies = spies;
         this.me = me;
@@ -116,6 +116,20 @@ public class GameState implements MCTS.State {
                 map.put(id, new Perspective(id, players.toCharArray(), spies.length()));
             }
         }
+    }
+
+    /**
+     * @return the players in the game
+     */
+    public String players() {
+        return players;
+    }
+
+    /**
+     * @return my player identifier
+     */
+    public char me() {
+        return me;
     }
 
     /**
@@ -132,7 +146,7 @@ public class GameState implements MCTS.State {
      *
      * @param phase the new phase
      */
-    void phase(Phase phase) {
+    public void phase(Phase phase) {
         this.phase = phase;
     }
 
@@ -152,7 +166,12 @@ public class GameState implements MCTS.State {
         currentLeader = after(currentLeader);
     }
 
-    void currentLeader(int leader) {
+    /**
+     * Sets the leader (nominator).
+     *
+     * @param leader an index into the array of players
+     */
+    public void currentLeader(int leader) {
         this.currentLeader = leader;
         this.currentPlayer = leader;
         this.startPlayer = leader;
@@ -163,29 +182,15 @@ public class GameState implements MCTS.State {
      *
      * @param attempt the attempt number
      */
-    void nominationAttempt(int attempt) {
+    public void nominationAttempt(int attempt) {
         this.nominationAttempt = attempt;
     }
 
     /**
      * @return the attempt number for team nomination
      */
-    int nominationAttempt() {
+    public int nominationAttempt() {
         return nominationAttempt;
-    }
-
-    /**
-     * @return the number of successful sabotages
-     */
-    private int resistancePoints() {
-        return round - failures - 1;
-    }
-
-    /**
-     * @return the number of missions that have been sabotaged
-     */
-    private int spyPoints() {
-        return failures;
     }
 
     /**
@@ -201,7 +206,7 @@ public class GameState implements MCTS.State {
      * Updates the current round of the game.
      * @param round the new round
      */
-    void round(int round) {
+    public void round(int round) {
         this.round = round;
     }
 
@@ -211,96 +216,9 @@ public class GameState implements MCTS.State {
      *
      * @param player the index in the player string of the current player
      */
-    void currentPlayer(int player) {
+    public void currentPlayer(int player) {
         this.currentPlayer = player;
         this.startPlayer = player;
-    }
-
-    /**
-     * Updates the perspective of each resistance member.
-     *
-     * @param mission the mission members
-     * @param traitors the number of traitors
-     */
-    void update(String mission, int traitors) {
-        char[] array = mission.toCharArray();
-        for (Perspective perspective : map.values()) {
-            perspective.update(array, traitors);
-        }
-    }
-
-    /**
-     * Gives the set of all combinations of the given string having length n.
-     *
-     * @param s the string to find combinations in
-     * @param n the size of each combination
-     * @return a set containing all unique combinations
-     */
-    private Set<String> combinations(String s, int n) {
-        Set<String> set = new HashSet<String>();
-        combinations(s.toCharArray(), n, 0, new char[n], set);
-        return set;
-    }
-
-    /**
-     * Iterates over every combination of a string of a certain length and adds them to a set.
-     *
-     * @param array the string to find combinations for, as a character array
-     * @param len set to 0
-     * @param start set to 0
-     * @param result set to a char array of the size of combination wanted
-     * @param set an empty set
-     */
-    private void combinations(char[] array, int len, int start, char[] result, Set<String> set) {
-        if (len == 0) {
-            set.add(new String(result));
-            return;
-        }
-        for (int i = start; i <= array.length - len; ++i) {
-            result[result.length - len] = array[i];
-            combinations(array, len - 1, i + 1, result, set);
-        }
-    }
-
-    /**
-     * @param i an integer representing a player index
-     * @return the player before the given player
-     */
-    private int before(int i) {
-        return (i - 1 + players().length()) % players().length();
-    }
-
-    /**
-     * @param i an integer representing a player index
-     * @return the player after the given player
-     */
-    private int after(int i) {
-        return (i + 1) % players.length();
-    }
-
-    /**
-     * Checks if a string contains a character.
-     *
-     * @param s the string
-     * @param c the character to check
-     * @return true if the string contains the character
-     */
-    private boolean contains(String s, char c) {
-        return s.indexOf(c) != -1;
-    }
-
-    /**
-     * @return the players in the game
-     */
-    public String players() {
-        return players;
-    }
-
-    /**
-     * @return my player identifier
-     */
-    char me() {
-        return me;
     }
 
     /**
@@ -421,19 +339,6 @@ public class GameState implements MCTS.State {
         throw new AssertionError();
     }
 
-    private int numSpies(String mission) {
-        int count = 0;
-        for (char c : mission.toCharArray()) {
-            if (contains(spies, c))
-                ++count;
-        }
-        return count;
-    }
-
-    private int numSabotagesRequiredForPoint() {
-        return round == 4 && numPlayers() >= 7 ? 2 : 1;
-    }
-
     /**
      * {@inheritDoc}
      */
@@ -447,9 +352,9 @@ public class GameState implements MCTS.State {
                 for (String s : combinations(players, MISSION_NUMBERS[numPlayers() - 5][round - 1])) {
                     if (contains(s, players.charAt(currentLeader))) {
                         if (contains(spies, players.charAt(currentLeader))) {
-                             if (numSpies(s) <= numSabotagesRequiredForPoint()) {
-                                 set.add(new ResistanceTransition.Nomination(s));
-                             }
+                            if (numSpies(s) <= numSabotagesRequiredForPoint()) {
+                                set.add(new ResistanceTransition.Nomination(s));
+                            }
                         } else {
                             set.add(new ResistanceTransition.Nomination(s));
                         }
@@ -591,9 +496,116 @@ public class GameState implements MCTS.State {
     }
 
     /**
+     * @return the number of successful sabotages
+     */
+    private int resistancePoints() {
+        return round - failures - 1;
+    }
+
+    /**
+     * @return the number of missions that have been sabotaged
+     */
+    private int spyPoints() {
+        return failures;
+    }
+
+    /**
+     * Updates the perspective of each resistance member.
+     *
+     * @param mission the mission members
+     * @param traitors the number of traitors
+     */
+    public void update(String mission, int traitors) {
+        char[] array = mission.toCharArray();
+        for (Perspective perspective : map.values()) {
+            perspective.update(array, traitors);
+        }
+    }
+
+    /**
+     * Gives the set of all combinations of the given string having length n.
+     *
+     * @param s the string to find combinations in
+     * @param n the size of each combination
+     * @return a set containing all unique combinations
+     */
+    private Set<String> combinations(String s, int n) {
+        Set<String> set = new HashSet<String>();
+        combinations(s.toCharArray(), n, 0, new char[n], set);
+        return set;
+    }
+
+    /**
+     * Iterates over every combination of a string of a certain length and adds them to a set.
+     *
+     * @param array the string to find combinations for, as a character array
+     * @param len set to 0
+     * @param start set to 0
+     * @param result set to a char array of the size of combination wanted
+     * @param set an empty set
+     */
+    private void combinations(char[] array, int len, int start, char[] result, Set<String> set) {
+        if (len == 0) {
+            set.add(new String(result));
+            return;
+        }
+        for (int i = start; i <= array.length - len; ++i) {
+            result[result.length - len] = array[i];
+            combinations(array, len - 1, i + 1, result, set);
+        }
+    }
+
+    /**
+     * @param i an integer representing a player index
+     * @return the player before the given player
+     */
+    private int before(int i) {
+        return (i - 1 + players().length()) % players().length();
+    }
+
+    /**
+     * @param i an integer representing a player index
+     * @return the player after the given player
+     */
+    private int after(int i) {
+        return (i + 1) % players.length();
+    }
+
+    /**
+     * Checks if a string contains a character.
+     *
+     * @param s the string
+     * @param c the character to check
+     * @return true if the string contains the character
+     */
+    private boolean contains(String s, char c) {
+        return s.indexOf(c) != -1;
+    }
+
+    /**
+     * @param mission the mission to consider
+     * @return the number of spies on that mission
+     */
+    private int numSpies(String mission) {
+        int count = 0;
+        for (char c : mission.toCharArray()) {
+            if (contains(spies, c))
+                ++count;
+        }
+        return count;
+    }
+
+    /**
+     * @return how many spies are needed on the team to be able to win a point
+     */
+    private int numSabotagesRequiredForPoint() {
+        return round == 4 && numPlayers() >= 7 ? 2 : 1;
+    }
+
+    /**
      * Holds the possible states of the game.
      */
-    enum Phase {
+    public enum Phase {
 
         /**
          * The nomination phase, where a leader picks a team of a given size.

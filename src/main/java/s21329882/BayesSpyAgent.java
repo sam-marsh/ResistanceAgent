@@ -14,11 +14,6 @@ import java.util.concurrent.Future;
  */
 public class BayesSpyAgent implements Agent {
 
-    //if a mission is sabotaged by us, the suspicion of the spies will increase - this constant holds the maximum
-    // suspicion increase ratio for any spy that may be caused by us sabotaging, before we decide to/not to sabotage.
-    // At the moment, we will not sabotage if it causes the suspicion of any spy to double (or more)
-    private static final double MAX_ACCEPTABLE_SUSPICION_INCREASE = 2.0;
-
     //whether the game has started and everything has been set up
     private boolean initialised;
 
@@ -73,8 +68,6 @@ public class BayesSpyAgent implements Agent {
     @Override
     public String do_Nominate(int number) {
         if (!initialised) {
-            //replace the spy string with question marks for the point of view of resistance members
-            String resistanceString = spies.replace("[^?]", "?");
             for (Character c : state.players()) {
                 if (spies.indexOf(c) == -1) {
                     perspectives.add(
@@ -129,6 +122,20 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public boolean do_Vote() {
+        if (!initialised) {
+            for (Character c : state.players()) {
+                if (spies.indexOf(c) == -1) {
+                    perspectives.add(
+                            new ResistancePerspective(
+                                    state, String.valueOf(c), new String(state.players())
+                            )
+                    );
+                }
+            }
+            initialised = true;
+            return true;
+        }
+
         //always accept my own missions
         if (state.proposedMission().leader() == me)
             return true;
@@ -166,16 +173,13 @@ public class BayesSpyAgent implements Agent {
             return true;
         }
 
+        //otherwise, check that we aren't at risk of identifying any spies with certainty (if so, don't sabotage)
+
         //now - simulate that every spy on the team will sabotage (worst case in terms of suspicion)
         int n = numberOfSpiesOnMission(state.mission());
         state.mission().done(n);
 
-        //after the below, this will hold the average suspicion for each spy before
-        Map<Character, Double> suspicion = new HashMap<Character, Double>(spies.length());
-        for (Character c : spies.toCharArray())
-            suspicion.put(c, 0.0);
-
-        boolean continuing = true;
+        boolean sabotaging = true;
 
         //iterate over every resistance perspective
         for (ResistancePerspective perspective : perspectives) {
@@ -196,11 +200,9 @@ public class BayesSpyAgent implements Agent {
 
                     //don't sabotage if there is a risk that it will reveal a spy
                     if (newSuspicion == 1 && oldSuspicion < 1) {
-                        continuing = false;
+                        sabotaging = false;
                         break;
                     }
-
-                    suspicion.put(p.id(), suspicion.get(p.id()) + newSuspicion / oldSuspicion);
                 }
             }
 
@@ -208,29 +210,15 @@ public class BayesSpyAgent implements Agent {
             for (Map.Entry<ResistancePerspective.Player, Double> entry : tmp.entrySet())
                 entry.getKey().bayesSuspicion(entry.getValue());
 
-            if (!continuing)
+            if (!sabotaging)
                 break;
         }
 
         //rollback mission simulation
         state.mission().undo();
 
-        if (!continuing)
-            return false;
-
-        //average the suspicions
-        for (Character c : spies.toCharArray()) {
-            suspicion.put(c, suspicion.get(c) / perspectives.size());
-        }
-
-        //check that no spy's suspicion is increasing too much
-        for (Map.Entry<Character, Double> entry : suspicion.entrySet()) {
-            if (entry.getValue() > MAX_ACCEPTABLE_SUSPICION_INCREASE) {
-                return false;
-            }
-        }
-
-        return true;
+        //still sabotage occasionally just for fun
+        return sabotaging || Math.random() < 0.3;
     }
 
     /**
@@ -251,8 +239,35 @@ public class BayesSpyAgent implements Agent {
      */
     @Override
     public String do_Accuse() {
-        //don't bother
-        return "";
+        //all resistance players and their total spy probabilities summed across the resistance perspectives
+        Map<Character, Double> resistances = new HashMap<Character, Double>();
+        for (ResistancePerspective perspective : perspectives) {
+            resistances.put(perspective.me().id(), 0.0);
+        }
+        //sum up total bayes suspicion
+        for (ResistancePerspective perspective : perspectives) {
+            for (ResistancePerspective.Player p : perspective.players()) {
+                if (resistances.keySet().contains(p.id())) {
+                    resistances.put(p.id(), resistances.get(p.id()) + p.bayesSuspicion());
+                }
+            }
+        }
+        //sort by suspicion descending
+        List<Map.Entry<Character, Double>> list = new ArrayList<Map.Entry<Character, Double>>(resistances.entrySet());
+        Collections.shuffle(list);
+        Collections.sort(list, new Comparator<Map.Entry<Character, Double>>() {
+            @Override
+            public int compare(Map.Entry<Character, Double> o1, Map.Entry<Character, Double> o2) {
+                return (int) Math.signum(o2.getValue() - o1.getValue());
+            }
+        });
+        //add most suspicious non-spy players until reaches the number of spies in the game
+        StringBuilder sb = new StringBuilder();
+        Iterator<Map.Entry<Character, Double>> iterator = list.iterator();
+        while (iterator.hasNext() && sb.length() < spies.length()) {
+            sb.append(iterator.next().getKey());
+        }
+        return sb.toString();
     }
 
     /**
@@ -291,8 +306,8 @@ public class BayesSpyAgent implements Agent {
     }
 
     /**
-     * Calculates the 'incorrectness' of the average resistance member's guess as to who is the spy, given our opponent
-     * model of the resistance. We try to maximise this incorrectness to win the game as a spy. This is used when
+     * Calculates the 'uncertainty' of the average resistance member's guess as to who is the spy, given our opponent
+     * model of the resistance. We try to maximise this uncertainty to win the game as a spy. This is used when
      * nominating a team to go on a mission. Every mission contains us - not particularly because it is an advantage,
      * but since it may be considered suspicious not to choose us on our team.
      *
@@ -317,32 +332,47 @@ public class BayesSpyAgent implements Agent {
 
             //create a fake mission
             GameState.Mission fake = new GameState.Mission(String.valueOf(me), sb.toString());
-            state.mission(fake);
             int sabotaged = numberOfSpiesOnMission(fake);
+
+            //don't want to nominate anything which won't score us a point
+            if (sabotaged != numSabotagesRequiredForPoint()) {
+                return min;
+            }
+
+            //fake a mission
+            state.mission(fake);
             state.mission().done(sabotaged);
 
+            //used to hold the total uncertainty
             final AtomicDouble total = new AtomicDouble();
+
+            //this is what we try to minimise - this probability is the initial probability in the resistance perspective,
+            // we try to keep the probabilities close to this value
             final double unknown = (double) state.numberOfSpies() / (state.numberOfPlayers() - 1);
 
-            Collection<Callable<Object>> collection = new ArrayList<Callable<Object>>();
+            //threading - execute all these in parallel to speed things up
+            Collection<Callable<Object>> tasks = new ArrayList<Callable<Object>>();
 
             //update suspicion values of resistance members
             for (final ResistancePerspective perspective : perspectives) {
-                collection.add(new Callable<Object>() {
+                tasks.add(new Callable<Object>() {
                     @Override
                     public Object call() throws Exception {
                         Map<ResistancePerspective.Player, Double> tmp = new HashMap<ResistancePerspective.Player, Double>(perspective.players().size());
                         for (ResistancePerspective.Player player : perspective.players())
                             tmp.put(player, player.bayesSuspicion());
 
+                        //shortcut for efficiency
                         if (total.value > min.getValue()) return null;
 
                         perspective.updateSuspicion();
 
-                        //sum up how wrong each player's suspicion of the spies is
+                        //sum up how uncertainty of players
                         for (ResistancePerspective.Player player : perspective.players()) {
                             if (!player.equals(perspective.me())) {
                                 total.increment(Math.pow(player.bayesSuspicion() - unknown, 2));
+
+                                //again, shortcut if we don't need to go any further
                                 if (total.value > min.getValue()) break;
                             }
                         }
@@ -357,15 +387,18 @@ public class BayesSpyAgent implements Agent {
             }
 
             try {
-                Collection<Future<Object>> futures = service.invokeAll(collection);
+                //run them all in parallel
+                Collection<Future<Object>> futures = service.invokeAll(tasks);
                 for (Future<Object> future : futures) future.get();
             } catch (Exception e) {
                 e.printStackTrace();
             }
 
             if (total.value < min.getValue()) {
+                //return this one as a better option
                 return new AbstractMap.SimpleEntry<String, Double>(sb.toString(), total.value);
             } else if (total.value == min.getValue()) {
+                //equal values - return either one
                 if (Math.random() < 0.5) {
                     return new AbstractMap.SimpleEntry<String, Double>(sb.toString(), total.value);
                 }
@@ -373,6 +406,7 @@ public class BayesSpyAgent implements Agent {
 
             return min;
         }
+
         //another base case - finished
         if (start == state.numberOfPlayers()) return min;
 
@@ -385,15 +419,29 @@ public class BayesSpyAgent implements Agent {
         return maximumUncertaintyChoice(select, start + 1, curr, used, newMin);
     }
 
+    /**
+     * Want to always nominate and vote for teams with this many spies.
+     *
+     * @return the number of traitors required for us to get a point
+     */
     private int numSabotagesRequiredForPoint() {
         return state.round() == 4 && state.numberOfPlayers() >= 7 ? 2 : 1;
     }
 
+    /**
+     * Mini-class for holding a double value that is accessed and incremented from multiple threads
+     */
     private class AtomicDouble {
 
-        volatile double value = 0;
+        //volatile so visible across threads quickly
+        private volatile double value = 0;
 
-        synchronized void increment(double by) {
+        /**
+         * Increments the value. Thread-safe.
+         *
+         * @param by the amount to increment by
+         */
+        private synchronized void increment(double by) {
             value += by;
         }
 

@@ -9,7 +9,7 @@ public class SearchSpyAgent implements Agent {
 
     //we only have one second to make our move... This is the amount of time we sleep the game thread in
     // order to search for as long as possible.
-    private static final int DELAY_TIME = 800;
+    private static final int DELAY_TIME = 900;
 
     //whether the agent has been started yet.
     private boolean initialised;

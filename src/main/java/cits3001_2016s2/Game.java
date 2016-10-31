@@ -362,12 +362,16 @@ public class Game{
   public static String tournament(Competitor[] agents, int rounds) throws IOException {
     Random tRand = new Random();
     for(int round = 0; round<rounds; round++){
-      if (round % 50 == 0) System.out.println("Round " + round + ".");
+      System.out.println("Round " + round + ".");
       Game g = new Game("Round"+round+".txt");
-      int playerNum = 7;//+tRand.nextInt(6);
-      while (g.numPlayers < playerNum - 1)
+      int playerNum = num;//+tRand.nextInt(6);
+      int nspies = spyNum[playerNum - 5];
+      for (int i = 0; i < nspies; ++i) {
         g.addPlayer(agents[1].getAgent(), playerNum);
-      g.addPlayer(agents[0].getAgent(), playerNum);
+      }
+      while (g.numPlayers < playerNum)
+        g.addPlayer(agents[0].getAgent(), playerNum);
+      //g.addPlayer(agents[0].getAgent(), playerNum);
 
       /*
       for(int i = 0; i<playerNum; i++){
@@ -406,33 +410,36 @@ public class Game{
     return ret+"</table></body></html>";  
   }
 
-
+private static int num = 7;
   /**
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
-    Game g = new Game();
-    g.stopwatchOn();g.addPlayer(new SearchAgent(), 5);g.stopwatchOff(1000,'B');
+   /* Game g = new Game();
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'A');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.setup();
     g.play();
+*/
+   for (int i = 6; i <= 10; ++i) {
+     num = i;
+     //Run a tournament
+     try{
+       File f = new File("Results" + i + ".html");
+       FileWriter fw = new FileWriter(f);
+       Competitor[] contenders = {
+               new Competitor(new BayesAgent(), "Bayes", "Sam"),
+               new Competitor(new SearchAgent(), "Search", "Sam"),
+       };
+       fw.write(tournament(contenders, 100));
+       fw.close();
+     }
+     catch(IOException e){System.out.println("IO fail");}
+   }
 
-   /* //Run a tournament
-    try{
-      File f = new File("Results.html");
-      FileWriter fw = new FileWriter(f);
-      Competitor[] contenders = {
-              new Competitor(new SearchAgent(), "Search", "Sam"),
-              new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              //new Competitor(new SearchAgent(), "MCTS", "Sam"),
-      };
-      fw.write(tournament(contenders, 1));
-      fw.close();
-    }
-    catch(IOException e){System.out.println("IO fail");}*/
   }
 
 }  
