@@ -535,13 +535,6 @@ public class GameState implements MCTS.State {
         }
     }
 
-    @Override
-    public MCTS.State randomise() {
-        GameState state = (GameState) copy();
-        state.spies =
-        return null;
-    }
-
     /**
      * {@inheritDoc}
      */

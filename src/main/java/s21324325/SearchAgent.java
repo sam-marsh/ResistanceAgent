@@ -4,19 +4,18 @@ import cits3001_2016s2.Agent;
 import s21329882.BayesResistanceAgent;
 
 /**
- * The Bayesian inference agent.
+ * The Monte Carlo Search agent.
  */
 public class SearchAgent implements Agent {
 
-    /**
-     * Whether the agent has been set up.
-     */
+    //whether the agent has been set up.
     private boolean initialised;
 
+    //all get_ and do_ methods are just passed to this
     private Agent delegate;
 
     /**
-     * Creates a new Bayesian agent.
+     * Creates a new Search agent.
      */
     public SearchAgent() {
         initialised = false;

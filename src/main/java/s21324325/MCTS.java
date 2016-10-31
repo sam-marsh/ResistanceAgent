@@ -378,8 +378,6 @@ public class MCTS {
          */
         void transition(Transition transition);
 
-        State randomise();
-
         /**
          * @return whether the game is over
          */

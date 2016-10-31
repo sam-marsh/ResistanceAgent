@@ -365,11 +365,9 @@ public class Game{
       if (round % 50 == 0) System.out.println("Round " + round + ".");
       Game g = new Game("Round"+round+".txt");
       int playerNum = 7;//+tRand.nextInt(6);
-      for (int i = 0; i < spyNum[playerNum - 5]; ++i) {
+      while (g.numPlayers < playerNum - 1)
         g.addPlayer(agents[1].getAgent(), playerNum);
-      }
-      while (g.numPlayers < playerNum)
-        g.addPlayer(agents[0].getAgent(), playerNum);
+      g.addPlayer(agents[0].getAgent(), playerNum);
 
       /*
       for(int i = 0; i<playerNum; i++){
@@ -413,28 +411,28 @@ public class Game{
    * Sets up game with random agents and plays
    **/
   public static void main(String[] args){
-    /*Game g = new Game();
+    Game g = new Game();
+    g.stopwatchOn();g.addPlayer(new SearchAgent(), 5);g.stopwatchOff(1000,'B');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'A');
     g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new RandomAgent(), 5);g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new RandomAgent(), 5);g.stopwatchOff(1000,'B');
-    g.stopwatchOn();g.addPlayer(new RandomAgent(), 5);g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
+    g.stopwatchOn();g.addPlayer(new BayesAgent(), 5);g.stopwatchOff(1000,'B');
     g.setup();
-    g.play();*/
+    g.play();
 
-    //Run a tournament
+   /* //Run a tournament
     try{
       File f = new File("Results.html");
       FileWriter fw = new FileWriter(f);
       Competitor[] contenders = {
+              new Competitor(new SearchAgent(), "Search", "Sam"),
               new Competitor(new BayesAgent(), "Bayes", "Sam"),
-              new Competitor(new SearchAgent(), "Search", "Sam")
               //new Competitor(new SearchAgent(), "MCTS", "Sam"),
       };
-      fw.write(tournament(contenders, 100));
+      fw.write(tournament(contenders, 1));
       fw.close();
     }
-    catch(IOException e){System.out.println("IO fail");}
+    catch(IOException e){System.out.println("IO fail");}*/
   }
 
 }  

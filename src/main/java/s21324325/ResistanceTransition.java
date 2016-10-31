@@ -1,10 +1,13 @@
 package s21324325;
 
 /**
- * the types of moves possible in the resistance game
+ * The types of moves possible in the resistance game.
  */
 public abstract class ResistanceTransition implements MCTS.Transition {
 
+    /**
+     * A nomination move. Holds a string representing the players on a mission.
+     */
     public static class Nomination extends ResistanceTransition {
 
         private String selection;
@@ -38,6 +41,9 @@ public abstract class ResistanceTransition implements MCTS.Transition {
 
     }
 
+    /**
+     * A sabotage move, either {@code true} or {@code false}.
+     */
     public static class Sabotage extends ResistanceTransition {
 
         private final boolean sabotage;
@@ -71,6 +77,9 @@ public abstract class ResistanceTransition implements MCTS.Transition {
 
     }
 
+    /**
+     * A vote move, either {@code true} or {@code false}.
+     */
     public static class Vote extends ResistanceTransition {
 
         private final boolean yes;

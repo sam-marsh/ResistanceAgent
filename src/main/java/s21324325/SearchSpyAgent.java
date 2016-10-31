@@ -3,29 +3,21 @@ package s21324325;
 import cits3001_2016s2.Agent;
 
 /**
- *
+ * The spy component of {@link SearchAgent}, using Monte Carlo Tree Search.
  */
 public class SearchSpyAgent implements Agent {
 
-    /**
-     * We only have one second to make our move... This is the amount of time we sleep the game thread
-     * in order to search for as long as possible.
-     */
+    //we only have one second to make our move... This is the amount of time we sleep the game thread in
+    // order to search for as long as possible.
     private static final int DELAY_TIME = 800;
 
-    /**
-     * Whether the agent has been started yet.
-     */
+    //whether the agent has been started yet.
     private boolean initialised;
 
-    /**
-     * The game state from the perspective of us (a spy - i.e. perfect information)
-     */
+    //the game state from the perspective of us (a spy - i.e. perfect information)
     private GameState state;
 
-    /**
-     * The searcher, used to pick our moves.
-     */
+    //the searcher, used to pick our moves.
     private MCTS searcher;
 
     /**
