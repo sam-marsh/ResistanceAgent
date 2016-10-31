@@ -1,4 +1,4 @@
-package s21329882;
+package s21324325;
 
 import cits3001_2016s2.Agent;
 
@@ -10,7 +10,7 @@ import java.util.concurrent.Future;
 
 /**
  * This is the spy agent. It uses Bayesian inference to decide on transitions based on which options will minimise the
- * opponent's knowledge (i.e. maximises the uncertainty in our opponents).
+ * opponent's21329882 knowledge (i.e. maximises the uncertainty in our opponents).
  */
 public class BayesSpyAgent implements Agent {
 
@@ -20,7 +20,7 @@ public class BayesSpyAgent implements Agent {
     //holds the game info, updated with each get_ method
     private GameState state;
 
-    //the view of the game from each resistance member's perspective - including who we think they think are spies
+    //the view of the game from each resistance member's21329882 perspective - including who we think they think are spies
     private Set<ResistancePerspective> perspectives;
 
     //my identifier character
@@ -306,7 +306,7 @@ public class BayesSpyAgent implements Agent {
     }
 
     /**
-     * Calculates the 'uncertainty' of the average resistance member's guess as to who is the spy, given our opponent
+     * Calculates the 'uncertainty' of the average resistance member's21329882 guess as to who is the spy, given our opponent
      * model of the resistance. We try to maximise this uncertainty to win the game as a spy. This is used when
      * nominating a team to go on a mission. Every mission contains us - not particularly because it is an advantage,
      * but since it may be considered suspicious not to choose us on our team.

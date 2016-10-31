@@ -1,10 +1,6 @@
-package s21324325;
+package s21329882;
 
 import org.junit.Test;
-
-import java.util.Arrays;
-
-import static org.junit.Assert.*;
 
 /**
  * Author: Sam Marsh

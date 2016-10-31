@@ -1,7 +1,7 @@
-package s21324325;
+package s21329882;
 
 import cits3001_2016s2.Agent;
-import s21329882.BayesResistanceAgent;
+import s21324325.BayesResistanceAgent;
 
 /**
  * The Monte Carlo Search agent.

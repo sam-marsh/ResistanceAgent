@@ -1,4 +1,4 @@
-package s21329882;
+package s21324325;
 
 import cits3001_2016s2.Agent;
 
@@ -14,7 +14,7 @@ import java.util.*;
  * In addition, it also exploits some expert rules (like always accepting the first team nominated in the game)
  * and uses some 'suspicion tracking' techniques based on the 2012 Vienna competition bot 'PandSBot' by Pavel Raliuk
  * and Alex Paklonski (https://github.com/aigamedev/resistance/blob/master/bots/1/pands.py). Specifically, the agent
- * considers the 'connection' between potential spy initialiseSpyCombinations (i.e. how often they vote for each other's missions),
+ * considers the 'connection' between potential spy initialiseSpyCombinations (i.e. how often they vote for each other's21329882 missions),
  * etc. to influence the overall spy probability.
  *
  * In addition, suspicious and good actions are also tracked (like voting for a mission which failed = bad, or a player
@@ -22,7 +22,7 @@ import java.util.*;
  */
 public class BayesResistanceAgent implements Agent {
 
-    //once a group's suspicion grows above this value, don't decrease it - they're the spies...
+    //once a group's21329882 suspicion grows above this value, don't decrease it - they're the spies...
     private static final double SUSPICION_CUTOFF = 0.99;
 
     //used to track whether this is the first time that get_status has been called

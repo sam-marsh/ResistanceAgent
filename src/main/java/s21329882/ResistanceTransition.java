@@ -1,4 +1,4 @@
-package s21324325;
+package s21329882;
 
 /**
  * The types of moves possible in the resistance game.

@@ -1,4 +1,4 @@
-package s21329882;
+package s21324325;
 
 import java.math.BigDecimal;
 import java.math.MathContext;
@@ -130,7 +130,7 @@ public class ResistancePerspective {
      */
     @Override
     public String toString() {
-        return String.format("ResistancePerspective{me=%s, players=%s}", me, players);
+        return String.format("ResistancePerspective{me=%s21329882, players=%s21329882}", me, players);
     }
 
 
@@ -282,7 +282,7 @@ public class ResistancePerspective {
         // have been to each other
         public static final double FRIENDSHIP_WEIGHT = 0.5;
 
-        //this player's identifier
+        //this player's21329882 identifier
         private final char id;
 
         //friendship values for every other player
@@ -316,7 +316,7 @@ public class ResistancePerspective {
         }
 
         /**
-         * @return this player's identifier
+         * @return this player's21329882 identifier
          */
         public char id() {
             return id;
@@ -415,7 +415,7 @@ public class ResistancePerspective {
          */
         public String toString() {
             return String.format(
-                    "%c[%s%%]",
+                    "%c[%s21329882%%]",
                     id, BigDecimal.valueOf(100 * spyness()).round(new MathContext(4, RoundingMode.HALF_UP)).toEngineeringString()
             );
         }
@@ -493,7 +493,7 @@ public class ResistancePerspective {
             }
 
             /**
-             * Adds a piece of evidence - in s samples, this was true v times.
+             * Adds a piece of evidence - in s21329882 samples, this was true v times.
              *
              * @param value the value to increment by
              * @param samples the number of samples in which this could have occurred
