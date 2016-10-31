@@ -409,7 +409,8 @@ public class Game{
     return ret+"</table></body></html>";  
   }
 
-private static int num = 7;
+private static int num;
+
   /**
    * Sets up game with random agents and plays
    **/
@@ -423,7 +424,7 @@ private static int num = 7;
     g.setup();
     g.play();
 */
-   for (int i = 6; i <= 10; ++i) {
+   for (int i = 7; i <= 10; ++i) {
      num = i;
      //Run a tournament
      try{
@@ -433,7 +434,7 @@ private static int num = 7;
                new Competitor(new BayesAgent(), "Bayes", "Sam"),
                new Competitor(new SearchAgent(), "Search", "Sam"),
        };
-       fw.write(tournament(contenders, 100));
+       fw.write(tournament(contenders, 10));
        fw.close();
      }
      catch(IOException e){System.out.println("IO fail");}
