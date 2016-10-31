@@ -15,7 +15,7 @@ public class GameState {
     //total number of spies in the game, from 2-4
     private final int numberOfSpies;
 
-    //each character's21329882 identifier
+    //each character's identifier
     private final char[] players;
 
     //the current round
@@ -151,7 +151,7 @@ public class GameState {
     @Override
     public String toString() {
         return String.format(
-                "GameState{numberOfPlayers=%d, numberOfSpies=%d, players=%s21329882, round=%d, failures=%d}",
+                "GameState{numberOfPlayers=%d, numberOfSpies=%d, players=%s, round=%d, failures=%d}",
                 numberOfPlayers, numberOfSpies, Arrays.toString(players), round, failures);
     }
 
@@ -252,7 +252,7 @@ public class GameState {
          */
         @Override
         public String toString() {
-            return String.format("Mission{leader=%s21329882, team=%s21329882, done=%s21329882, traitors=%d}", leader, team, done(), traitors);
+            return String.format("Mission{leader=%s, team=%s, done=%s, traitors=%d}", leader, team, done(), traitors);
         }
 
     }

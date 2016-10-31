@@ -138,7 +138,7 @@ public class MCTS {
                 //choose a random unvisited child node, add to list of children for that node, transition into node
                 Node child = node.unvisited.remove(RANDOM.nextInt(node.unvisited.size()));
                 node.children.add(child);
-                //change state based on this node's21329882 transition
+                //change state based on this node's transition
                 state.transition(child.transition);
                 return new Result(state, child);
             } else {
@@ -149,7 +149,7 @@ public class MCTS {
                     return new Result(state, node);
                 }
                 node = randomChoice(best);
-                //change state based on this node's21329882 transition
+                //change state based on this node's transition
                 state.transition(node.transition);
             }
         }
@@ -158,7 +158,7 @@ public class MCTS {
 
     /**
      * Exploration/exploitation: uses the UCT method to pick the best
-     * child node(s21329882). This returns a list and not a single node because
+     * child node(s). This returns a list and not a single node because
      * multiple children may be equal.
      *
      * @param node the node from which a child will be picked
@@ -234,7 +234,7 @@ public class MCTS {
      *
      * @param node the node to check
      * @param list the list containing the maximum nodes
-     * @param value the node's21329882 value to check
+     * @param value the node's value to check
      * @param max the current maximum
      * @return the new maximum
      */
@@ -258,13 +258,13 @@ public class MCTS {
      */
     private static class Node {
 
-        //holds each player's21329882 score (in The Resistance, simply 0=on losing team and 1=winning team)
+        //holds each player's score (in The Resistance, simply 0=on losing team and 1=winning team)
         private int[] score;
         //the number of games carried out in this subtree
         private int games;
         //the transition performed on the previous state
         private Transition transition;
-        //this node's21329882 children which have not been visited yet
+        //this node's children which have not been visited yet
         private List<Node> unvisited;
         //the children which HAVE been visited
         private List<Node> children;
@@ -289,7 +289,7 @@ public class MCTS {
          *
          * @param state the 'parent' state
          * @param transition the transition to perform
-         * @param parent the node's21329882 parent
+         * @param parent the node's parent
          */
         Node(State state, Transition transition, Node parent) {
             this.children = new ArrayList<Node>();

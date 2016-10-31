@@ -42,7 +42,7 @@ public class GameState implements MCTS.State {
     private Phase phase;
 
     /**
-     * The current player is the one who 'chooses' a transition next. The integer represents the player's21329882
+     * The current player is the one who 'chooses' a transition next. The integer represents the player's
      * index in the {@link GameState#players} string. This applies in the voting and mission stages.
      */
     private int currentPlayer;
@@ -212,7 +212,7 @@ public class GameState implements MCTS.State {
 
     /**
      * Updates the current player. Important to call this before search so that we are simulating from the correct
-     * player's21329882 point of view.
+     * player's point of view.
      *
      * @param player the index in the player string of the current player
      */
@@ -488,8 +488,8 @@ public class GameState implements MCTS.State {
     @Override
     public String toString() {
         return String.format(
-                "GameState{players='%s21329882', spies='%s21329882', me=%s21329882, phase=%s21329882, currentPlayer=%d, currentLeader=%d, round=%d, " +
-                        "failures=%d, nominationAttempt=%d, votes=%d, mission='%s21329882', traitors=%d}",
+                "GameState{players='%s', spies='%s', me=%s, phase=%s, currentPlayer=%d, currentLeader=%d, round=%d, " +
+                        "failures=%d, nominationAttempt=%d, votes=%d, mission='%s', traitors=%d}",
                 players, spies, me, phase, currentPlayer, currentLeader, round, failures,
                 nominationAttempt, votes, mission, traitors
         );
