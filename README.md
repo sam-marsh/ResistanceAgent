@@ -1,7 +1,5 @@
 # ResistanceAI
-An artificially intelligent agent that plays the game The Resistance.
 
-- [Algorithms](working/algorithms.md)
-- [Links](working/links.md)
-- [Todo](working/todo.md)
-- [Tricks](working/tricks.md)
+Two artificially intelligent agents for playing the party game The Resistance.
+
+One uses Monte Carlo Tree Search as a spy agent. The other uses a Bayesian inference technique along with behaviour tracking.
