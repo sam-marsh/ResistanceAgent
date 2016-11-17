@@ -1,4 +1,4 @@
-package s21324325;
+package bayes;
 
 import java.math.BigDecimal;
 import java.math.MathContext;

@@ -1,4 +1,4 @@
-package s21329882;
+package search;
 
 import java.util.*;
 import java.util.concurrent.ExecutorService;

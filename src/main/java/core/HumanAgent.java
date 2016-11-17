@@ -1,4 +1,4 @@
-package cits3001_2016s2;
+package core;
 
 import java.util.*;
 import java.io.*;
@@ -39,7 +39,7 @@ public class HumanAgent implements Agent{
 
   /**
    * Reports the current status, including players name, the name of all players, the names of the spies (if known), the mission number and the number of failed missions
-   * @param name a string consisting of a single letter, the agent's21329882 names.
+   * @param name a string consisting of a single letter, the agent'search names.
    * @param players a string consisting of one letter for everyone in the game.
    * @param spies a String consisting of the latter name of each spy, if the agent is a spy, or n questions marks where n is the number of spies allocated; this should be sufficient for the agent to determine if they are a spy or not. 
    * @param mission the next mission to be launched

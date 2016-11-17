@@ -1,6 +1,6 @@
-package s21329882;
+package search;
 
-import s21324325.GameState;
+import bayes.GameState;
 
 import java.util.HashMap;
 import java.util.LinkedList;
@@ -9,7 +9,7 @@ import java.util.Map;
 
 /**
  * Holds bayes suspicions for all other players from the perspective of a resistance member. Lightweight version
- * of {@link s21324325.ResistancePerspective}.
+ * of {@link bayes.ResistancePerspective}.
  */
 public class Perspective {
 
@@ -168,13 +168,13 @@ public class Perspective {
      * and returns the total probability for the given number of sabotages to have occurred in a mission, assuming a certain
      * spy combination.
      *
-     * @param spies the assumed list of spies (of size {@link s21324325.GameState#numberOfSpies()})
+     * @param spies the assumed list of spies (of size {@link bayes.GameState#numberOfSpies()})
      * @param mission the mission that just occurred
      * @param traitors the number of sabotages
      * @param start recursive parameter to help iterate over combinations - pass 0
      * @param curr recursive parameter to help iterate over combinations - pass 0
      * @param sabotaged recursive parameter to help iterate over combinations - pass a boolean array filled with the
-     *                     value {@code false} of size {@link s21324325.GameState#numberOfSpies()}
+     *                     value {@code false} of size {@link bayes.GameState#numberOfSpies()}
      * @return the total probability for a given set of spies to have sabotaged the number of times that the mission
      * was sabotaged
      */

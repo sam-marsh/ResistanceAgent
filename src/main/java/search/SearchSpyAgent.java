@@ -1,6 +1,6 @@
-package s21329882;
+package search;
 
-import cits3001_2016s2.Agent;
+import core.Agent;
 
 /**
  * The spy component of {@link SearchAgent}, using Monte Carlo Tree Search.

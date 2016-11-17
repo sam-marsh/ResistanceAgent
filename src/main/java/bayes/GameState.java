@@ -1,4 +1,4 @@
-package s21324325;
+package bayes;
 
 import java.util.Arrays;
 import java.util.HashSet;

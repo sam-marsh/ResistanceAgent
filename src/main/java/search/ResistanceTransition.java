@@ -1,4 +1,4 @@
-package s21329882;
+package search;
 
 /**
  * The types of moves possible in the resistance game.

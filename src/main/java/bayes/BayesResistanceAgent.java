@@ -1,6 +1,6 @@
-package s21324325;
+package bayes;
 
-import cits3001_2016s2.Agent;
+import core.Agent;
 
 import java.util.*;
 

@@ -1,7 +1,7 @@
-package cits3001_2016s2;
+package core;
 
-import s21329882.SearchAgent;
-import s21324325.BayesAgent;
+import search.SearchAgent;
+import bayes.BayesAgent;
 
 import java.util.*;
 import java.io.*;
